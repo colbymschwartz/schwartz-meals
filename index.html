@@ -42,6 +42,7 @@
             background: var(--cream);
             color: var(--text-dark);
             overflow: hidden;
+            -webkit-overflow-scrolling: touch;
         }
 
         #root {
@@ -82,6 +83,7 @@
         .app-content {
             flex: 1;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
             padding-bottom: 80px;
             display: flex;
             flex-direction: column;
@@ -90,13 +92,11 @@
         .view {
             display: none;
             flex: 1;
-            overflow-y: auto;
             animation: fadeIn 0.3s ease;
         }
 
         .view.active {
-            display: flex;
-            flex-direction: column;
+            display: block;
         }
 
         @keyframes fadeIn {
