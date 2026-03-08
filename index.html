@@ -1436,9 +1436,10 @@
                                                     setVotingStep("candidates");
                                                     setSelectedCandidates([]);
                                                     setFamilyVotes({});
+                                                    setVoteCandidates([]);
                                                     setShowVotingModal(true);
                                                 }}>
-                                                    🗳️ Vote
+                                                    🗳️ Dinner Poll
                                                 </button>
                                                 <button className="btn btn-secondary btn-small" onClick={clearWeek}>
                                                     🗑️ Clear
@@ -2307,87 +2308,173 @@
         }
 
         function VotingModal({ onClose, votingStep, setVotingStep, selectedCandidates, setSelectedCandidates, familyVotes, setFamilyVotes, voteCandidates, setVoteCandidates, meals, familyMembers, weekPlan, setWeekPlan, getWeekDates, setCurrentView }) {
+            const LETTERS = ["A", "B", "C", "D", "E", "F"];
             const [searchQuery, setSearchQuery] = useState("");
+            const [pollNight, setPollNight] = useState("tonight");
+            const [customOptions, setCustomOptions] = useState([]); // {id, name, isCustom}
+            const [newCustom, setNewCustom] = useState("");
+            const [includeWriteIn, setIncludeWriteIn] = useState(true);
+            const [pollSent, setPollSent] = useState(false);
 
-            const handleSelectCandidate = (mealId) => {
-                if (selectedCandidates.includes(mealId)) {
-                    setSelectedCandidates(selectedCandidates.filter(id => id !== mealId));
-                } else if (selectedCandidates.length < 8) {
-                    setSelectedCandidates([...selectedCandidates, mealId]);
-                }
+            const getNightLabel = () => {
+                if (pollNight === "tonight") return "tonight";
+                if (pollNight === "tomorrow") return "tomorrow night";
+                return pollNight;
             };
 
+            const getNightDateKey = () => {
+                const today = new Date();
+                if (pollNight === "tonight") return today.toISOString().split("T")[0];
+                if (pollNight === "tomorrow") {
+                    const tm = new Date(today);
+                    tm.setDate(tm.getDate() + 1);
+                    return tm.toISOString().split("T")[0];
+                }
+                return pollNight; // already a date string
+            };
+
+            // Upcoming dates for the week
+            const getUpcomingDates = () => {
+                const dates = [];
+                const today = new Date();
+                for (let i = 2; i < 7; i++) {
+                    const d = new Date(today);
+                    d.setDate(d.getDate() + i);
+                    dates.push({
+                        value: d.toISOString().split("T")[0],
+                        label: d.toLocaleDateString("en-US", { weekday: "long" })
+                    });
+                }
+                return dates;
+            };
+
+            const handleAddFromLibrary = (meal) => {
+                if (customOptions.length >= 5) return;
+                if (customOptions.find(o => o.id === meal.id)) return;
+                setCustomOptions([...customOptions, { id: meal.id, name: meal.name, isCustom: false }]);
+                setSearchQuery("");
+            };
+
+            const handleAddCustomOption = () => {
+                if (!newCustom.trim() || customOptions.length >= 5) return;
+                setCustomOptions([...customOptions, { id: `custom-${Date.now()}`, name: newCustom.trim(), isCustom: true }]);
+                setNewCustom("");
+            };
+
+            const handleRemoveOption = (id) => {
+                setCustomOptions(customOptions.filter(o => o.id !== id));
+            };
+
+            const allOptions = [...customOptions];
+            if (includeWriteIn) allOptions.push({ id: "__writein__", name: "Your pick! (reply with what you want)", isCustom: true });
+
             const handleGoToSend = () => {
-                setVoteCandidates(selectedCandidates.map(id => meals.find(m => m.id === id)).filter(m => m));
+                setVoteCandidates(allOptions);
                 setVotingStep("send");
+            };
+
+            const getPollMessage = () => {
+                const lines = [`🍽️ What do you guys want for dinner ${getNightLabel()}?`, ""];
+                allOptions.forEach((opt, i) => {
+                    if (opt.id === "__writein__") {
+                        lines.push(`${LETTERS[i]}. Your pick! (tell us what you want)`);
+                    } else {
+                        lines.push(`${LETTERS[i]}. ${opt.name}`);
+                    }
+                });
+                lines.push("", "Reply with your letter! 🗳️");
+                return lines.join("\n");
+            };
+
+            const handleShare = async () => {
+                const text = getPollMessage();
+                try {
+                    if (navigator.share) {
+                        await navigator.share({ text });
+                        setPollSent(true);
+                    } else {
+                        await navigator.clipboard.writeText(text);
+                        alert("Copied to clipboard! Paste it in your family group chat.");
+                        setPollSent(true);
+                    }
+                } catch(e) {
+                    // User cancelled share - that's ok
+                }
             };
 
             const handleGoToTally = () => {
                 setVotingStep("tally");
-                familyMembers.forEach(member => {
-                    if (!familyVotes[member.id]) {
-                        setFamilyVotes(prev => ({ ...prev, [member.id]: [] }));
-                    }
-                });
+                const initial = {};
+                familyMembers.forEach(member => { initial[member.id] = null; });
+                setFamilyVotes(initial);
             };
 
-            const handleVoteMeal = (memberId, mealId) => {
-                const memberVotes = familyVotes[memberId] || [];
-                if (memberVotes.includes(mealId)) {
-                    setFamilyVotes(prev => ({ ...prev, [memberId]: memberVotes.filter(id => id !== mealId) }));
-                } else if (memberVotes.length < 3) {
-                    setFamilyVotes(prev => ({ ...prev, [memberId]: [...memberVotes, mealId] }));
+            const handleVote = (memberId, optionId) => {
+                setFamilyVotes(prev => ({
+                    ...prev,
+                    [memberId]: prev[memberId] === optionId ? null : optionId
+                }));
+            };
+
+            const getResults = () => {
+                const counts = {};
+                allOptions.forEach(opt => { counts[opt.id] = 0; });
+                Object.values(familyVotes).forEach(vote => {
+                    if (vote && counts[vote] !== undefined) counts[vote]++;
+                });
+                return allOptions
+                    .map(opt => ({ ...opt, votes: counts[opt.id] || 0 }))
+                    .sort((a, b) => b.votes - a.votes);
+            };
+
+            const handlePlanWinner = (option) => {
+                const dateKey = getNightDateKey();
+                const slotKey = `${dateKey}-dinner`;
+                if (option.id !== "__writein__" && !option.isCustom) {
+                    // It's from the library
+                    const newPlan = { ...weekPlan, [slotKey]: option.id };
+                    setWeekPlan(newPlan);
+                } else if (option.isCustom && option.id !== "__writein__") {
+                    // Custom text option — create a quick meal entry
+                    const newMeal = {
+                        id: `poll-${Date.now()}`,
+                        name: option.name,
+                        cuisine: "American",
+                        prepTime: 30,
+                        prepType: "fresh",
+                        ingredients: [],
+                        steps: [],
+                        notes: "Added from dinner poll",
+                        rating: 0,
+                        ratings: {},
+                        recipeUrl: ""
+                    };
+                    // We need to use a callback approach since we can't directly setMeals
+                    const stored = JSON.parse(localStorage.getItem("meals") || "[]");
+                    stored.push(newMeal);
+                    localStorage.setItem("meals", JSON.stringify(stored));
+                    const newPlan = { ...weekPlan, [slotKey]: newMeal.id };
+                    setWeekPlan(newPlan);
                 }
-            };
-
-            const getVoteTally = () => {
-                const tally = {};
-                Object.values(familyVotes).forEach(votes => {
-                    votes.forEach((mealId, idx) => {
-                        const points = 3 - idx; // 1st choice = 3 pts, 2nd = 2 pts, 3rd = 1 pt
-                        tally[mealId] = (tally[mealId] || 0) + points;
-                    });
-                });
-                return Object.entries(tally)
-                    .map(([mealId, points]) => ({ mealId, points, meal: voteCandidates.find(m => m.id === mealId) }))
-                    .filter(t => t.meal)
-                    .sort((a, b) => b.points - a.points);
-            };
-
-            const handlePlanWinners = () => {
-                const tally = getVoteTally().slice(0, 3);
-                const emptySlots = [];
-                getWeekDates().forEach(date => {
-                    ["breakfast", "lunch", "dinner"].forEach(type => {
-                        if (!weekPlan[`${date}-${type}`]) {
-                            emptySlots.push(`${date}-${type}`);
-                        }
-                    });
-                });
-
-                const newPlan = { ...weekPlan };
-                tally.forEach((item, idx) => {
-                    if (idx < emptySlots.length) {
-                        newPlan[emptySlots[idx]] = item.mealId;
-                    }
-                });
-                setWeekPlan(newPlan);
                 onClose();
                 setCurrentView("planner");
             };
 
-            const filteredMeals = searchQuery ? meals.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 10) : meals.slice(0, 8);
-            const tally = getVoteTally();
-            const maxVotes = tally.length > 0 ? tally[0].points : 1;
+            const filteredMeals = searchQuery.length > 1
+                ? meals.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 6)
+                : [];
+
+            const results = getResults();
+            const totalVotes = Object.values(familyVotes).filter(v => v !== null).length;
 
             return (
                 <div className="modal active" onClick={(e) => e.target === e.currentTarget && onClose()}>
                     <div className="modal-content" style={{ maxHeight: "85vh", overflowY: "auto" }}>
                         <div className="modal-header">
                             <div>
-                                {votingStep === "candidates" && "Pick Candidates (4-8)"}
-                                {votingStep === "send" && "Send Poll"}
-                                {votingStep === "tally" && "Tally Votes"}
+                                {votingStep === "candidates" && "🗳️ Dinner Poll"}
+                                {votingStep === "send" && "📱 Send to Family"}
+                                {votingStep === "tally" && "📊 Tally Votes"}
                             </div>
                             <button className="modal-close" onClick={onClose}>✕</button>
                         </div>
@@ -2395,110 +2482,209 @@
                         <div style={{ padding: "20px" }}>
                             {votingStep === "candidates" && (
                                 <>
-                                    <input
-                                        type="text"
-                                        className="search-input"
-                                        placeholder="Search meals..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        style={{ marginBottom: "12px" }}
-                                    />
-                                    <div style={{ fontSize: "13px", color: "var(--text-light)", marginBottom: "12px" }}>
-                                        Selected: {selectedCandidates.length}/8
-                                    </div>
-                                    {filteredMeals.map(meal => (
-                                        <div
-                                            key={meal.id}
-                                            className={`vote-candidate ${selectedCandidates.includes(meal.id) ? "selected" : ""}`}
-                                            onClick={() => handleSelectCandidate(meal.id)}
-                                        >
-                                            <input type="checkbox" checked={selectedCandidates.includes(meal.id)} readOnly style={{ marginRight: "8px" }} />
-                                            <span>{meal.name}</span>
+                                    {/* Pick the night */}
+                                    <div style={{ marginBottom: "20px" }}>
+                                        <div style={{ fontSize: "13px", fontWeight: "700", color: "var(--primary)", marginBottom: "8px" }}>What night?</div>
+                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                                            {[{ value: "tonight", label: "Tonight" }, { value: "tomorrow", label: "Tomorrow" }, ...getUpcomingDates()].map(d => (
+                                                <button key={d.value} onClick={() => setPollNight(d.value)}
+                                                    style={{
+                                                        padding: "8px 16px", borderRadius: "20px", fontSize: "13px", cursor: "pointer",
+                                                        border: pollNight === d.value ? "2px solid var(--primary)" : "1px solid var(--border-light)",
+                                                        background: pollNight === d.value ? "var(--primary)" : "white",
+                                                        color: pollNight === d.value ? "white" : "var(--text-dark)",
+                                                        fontWeight: pollNight === d.value ? "700" : "400"
+                                                    }}>
+                                                    {d.label}
+                                                </button>
+                                            ))}
                                         </div>
-                                    ))}
-                                    <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
-                                        <button className="btn btn-primary" style={{ flex: 1 }} disabled={selectedCandidates.length < 4} onClick={handleGoToSend}>
-                                            Next
-                                        </button>
-                                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
                                     </div>
+
+                                    {/* Add meal options */}
+                                    <div style={{ marginBottom: "16px" }}>
+                                        <div style={{ fontSize: "13px", fontWeight: "700", color: "var(--primary)", marginBottom: "8px" }}>
+                                            Meal options ({customOptions.length}/5)
+                                        </div>
+
+                                        {/* Current options */}
+                                        {customOptions.map((opt, i) => (
+                                            <div key={opt.id} style={{
+                                                display: "flex", alignItems: "center", padding: "10px 12px", marginBottom: "6px",
+                                                background: "white", borderRadius: "8px", border: "1px solid var(--border-light)"
+                                            }}>
+                                                <span style={{ fontWeight: "700", color: "var(--primary)", marginRight: "12px", fontSize: "15px" }}>{LETTERS[i]}.</span>
+                                                <span style={{ flex: 1, fontSize: "14px" }}>{opt.name}</span>
+                                                <button onClick={() => handleRemoveOption(opt.id)}
+                                                    style={{ background: "none", border: "none", color: "#999", cursor: "pointer", fontSize: "16px", padding: "2px 6px" }}>✕</button>
+                                            </div>
+                                        ))}
+
+                                        {/* Write-in option preview */}
+                                        {includeWriteIn && (
+                                            <div style={{
+                                                display: "flex", alignItems: "center", padding: "10px 12px", marginBottom: "6px",
+                                                background: "var(--cream)", borderRadius: "8px", border: "1px dashed var(--border-light)"
+                                            }}>
+                                                <span style={{ fontWeight: "700", color: "var(--text-light)", marginRight: "12px", fontSize: "15px" }}>{LETTERS[customOptions.length]}.</span>
+                                                <span style={{ flex: 1, fontSize: "14px", color: "var(--text-light)", fontStyle: "italic" }}>Your pick! (write-in)</span>
+                                                <button onClick={() => setIncludeWriteIn(false)}
+                                                    style={{ background: "none", border: "none", color: "#999", cursor: "pointer", fontSize: "16px", padding: "2px 6px" }}>✕</button>
+                                            </div>
+                                        )}
+                                        {!includeWriteIn && customOptions.length < 5 && (
+                                            <button onClick={() => setIncludeWriteIn(true)}
+                                                style={{ fontSize: "12px", color: "var(--primary)", background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}>
+                                                + Add write-in option
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Search from library */}
+                                    {customOptions.length < 5 && (
+                                        <div style={{ marginBottom: "16px" }}>
+                                            <input
+                                                type="text"
+                                                className="search-input"
+                                                placeholder="Search your meals to add..."
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                style={{ marginBottom: "4px", fontSize: "13px" }}
+                                            />
+                                            {filteredMeals.length > 0 && (
+                                                <div style={{ background: "white", borderRadius: "8px", border: "1px solid var(--border-light)", maxHeight: "150px", overflowY: "auto" }}>
+                                                    {filteredMeals.map(meal => (
+                                                        <div key={meal.id} onClick={() => handleAddFromLibrary(meal)}
+                                                            style={{
+                                                                padding: "10px 12px", cursor: "pointer", fontSize: "13px",
+                                                                borderBottom: "1px solid var(--border-light)",
+                                                                opacity: customOptions.find(o => o.id === meal.id) ? 0.4 : 1
+                                                            }}>
+                                                            {MEAL_ICONS[meal.cuisine]} {meal.name}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Or type a custom option */}
+                                            <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Or type a custom option..."
+                                                    value={newCustom}
+                                                    onChange={(e) => setNewCustom(e.target.value)}
+                                                    onKeyDown={(e) => e.key === "Enter" && handleAddCustomOption()}
+                                                    style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid var(--border-light)", fontSize: "13px" }}
+                                                />
+                                                <button onClick={handleAddCustomOption} className="btn btn-primary btn-small" disabled={!newCustom.trim()}>Add</button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <button className="btn btn-primary" style={{ width: "100%", padding: "14px", fontSize: "16px" }}
+                                        disabled={customOptions.length < 2}
+                                        onClick={handleGoToSend}>
+                                        Preview & Send 📱
+                                    </button>
                                 </>
                             )}
 
                             {votingStep === "send" && (
                                 <>
-                                    <div style={{ fontSize: "13px", marginBottom: "16px", padding: "12px", background: "var(--cream)", borderRadius: "8px", fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
-                                        {'🍽️ Schwartz Family Meal Vote!\nReply with your top 3 numbers:\n' + voteCandidates.map((m, i) => `${i + 1}. ${m.name}`).join('\n') + '\n\nVote now! 🗳️'}
+                                    <div style={{
+                                        padding: "16px", marginBottom: "16px", background: "var(--cream)", borderRadius: "12px",
+                                        fontSize: "14px", lineHeight: "1.8", whiteSpace: "pre-wrap"
+                                    }}>
+                                        {getPollMessage()}
                                     </div>
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                                        <button
-                                            className="btn btn-primary"
-                                            onClick={() => {
-                                                const text = `🍽️ Schwartz Family Meal Vote!\nReply with your top 3 numbers:\n${voteCandidates.map((m, i) => `${i + 1}. ${m.name}`).join('\n')}\n\nVote now! 🗳️`;
-                                                if (navigator.share) {
-                                                    navigator.share({ text });
-                                                } else {
-                                                    navigator.clipboard.writeText(text);
-                                                    alert("Copied to clipboard!");
-                                                }
-                                            }}
-                                        >
-                                            Share
+
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                        <button className="btn btn-primary" style={{ padding: "14px", fontSize: "16px" }} onClick={handleShare}>
+                                            {pollSent ? "✅ Sent! Share Again?" : "📱 Send to Family Chat"}
                                         </button>
-                                        <button
-                                            className="btn btn-secondary"
-                                            onClick={() => {
-                                                const text = `🍽️ Schwartz Family Meal Vote!\nReply with your top 3 numbers:\n${voteCandidates.map((m, i) => `${i + 1}. ${m.name}`).join('\n')}\n\nVote now! 🗳️`;
-                                                navigator.clipboard.writeText(text);
-                                                alert("Copied to clipboard!");
-                                            }}
-                                        >
-                                            Copy
+                                        <button className="btn btn-secondary" style={{ padding: "12px" }} onClick={() => {
+                                            navigator.clipboard.writeText(getPollMessage());
+                                            alert("Copied! Paste in your group chat.");
+                                        }}>
+                                            📋 Copy to Clipboard
                                         </button>
-                                        <button className="btn btn-secondary" onClick={handleGoToTally}>Next: Tally Votes</button>
+                                        {pollSent && (
+                                            <button className="btn btn-primary" style={{ padding: "14px", fontSize: "16px", background: "var(--accent)" }} onClick={handleGoToTally}>
+                                                Votes are in! Tally Up 📊
+                                            </button>
+                                        )}
+                                        <button className="btn" style={{ padding: "10px", fontSize: "13px", background: "none", border: "none", color: "var(--text-light)", cursor: "pointer" }}
+                                            onClick={() => { setVotingStep("candidates"); setPollSent(false); }}>
+                                            ← Back to edit
+                                        </button>
                                     </div>
                                 </>
                             )}
 
                             {votingStep === "tally" && (
                                 <>
+                                    <div style={{ fontSize: "13px", color: "var(--text-light)", marginBottom: "16px" }}>
+                                        Tap each person's pick as the replies come in:
+                                    </div>
+
                                     {familyMembers.map(member => (
-                                        <div key={member.id} style={{ marginBottom: "20px" }}>
-                                            <div style={{ fontSize: "13px", fontWeight: "700", marginBottom: "8px" }}>{member.name}</div>
-                                            {voteCandidates.map(meal => (
-                                                <div
-                                                    key={meal.id}
-                                                    className="vote-tally-item"
-                                                    onClick={() => handleVoteMeal(member.id, meal.id)}
-                                                    style={{ cursor: "pointer", opacity: (familyVotes[member.id] || []).includes(meal.id) ? 1 : 0.6 }}
-                                                >
-                                                    <input type="checkbox" checked={(familyVotes[member.id] || []).includes(meal.id)} readOnly />
-                                                    <span style={{ flex: 1 }}>{meal.name}</span>
-                                                </div>
-                                            ))}
+                                        <div key={member.id} style={{ marginBottom: "16px" }}>
+                                            <div style={{ fontSize: "14px", fontWeight: "700", marginBottom: "6px" }}>
+                                                {member.name} {familyVotes[member.id] ? "✅" : ""}
+                                            </div>
+                                            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                                                {allOptions.map((opt, i) => (
+                                                    <button key={opt.id} onClick={() => handleVote(member.id, opt.id)}
+                                                        style={{
+                                                            padding: "8px 14px", borderRadius: "20px", fontSize: "13px", cursor: "pointer",
+                                                            border: familyVotes[member.id] === opt.id ? "2px solid var(--primary)" : "1px solid var(--border-light)",
+                                                            background: familyVotes[member.id] === opt.id ? "var(--primary)" : "white",
+                                                            color: familyVotes[member.id] === opt.id ? "white" : "var(--text-dark)",
+                                                            fontWeight: familyVotes[member.id] === opt.id ? "700" : "400"
+                                                        }}>
+                                                        {LETTERS[i]}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     ))}
 
-                                    {tally.length > 0 && (
-                                        <div style={{ marginTop: "20px", padding: "16px", background: "var(--cream)", borderRadius: "8px" }}>
-                                            <div style={{ fontSize: "13px", fontWeight: "700", marginBottom: "12px" }}>Results</div>
-                                            {tally.map((item, idx) => (
-                                                <div key={idx} style={{ marginBottom: "12px" }}>
-                                                    <div style={{ fontSize: "12px", marginBottom: "4px" }}>
-                                                        {idx + 1}. {item.meal.name} ({item.points} pts)
+                                    {/* Live results */}
+                                    {totalVotes > 0 && (
+                                        <div style={{ marginTop: "16px", padding: "16px", background: "var(--cream)", borderRadius: "12px" }}>
+                                            <div style={{ fontSize: "14px", fontWeight: "700", marginBottom: "12px" }}>
+                                                {totalVotes === familyMembers.length ? "🎉 All votes in!" : `${totalVotes}/${familyMembers.length} voted`}
+                                            </div>
+                                            {results.filter(r => r.votes > 0).map((r, idx) => (
+                                                <div key={r.id} style={{ marginBottom: "10px" }}>
+                                                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", marginBottom: "4px" }}>
+                                                        <span>{idx === 0 && r.votes > 0 ? "👑 " : ""}{r.name}</span>
+                                                        <span style={{ fontWeight: "700" }}>{r.votes} vote{r.votes !== 1 ? "s" : ""}</span>
                                                     </div>
-                                                    <div className="vote-tally-bar" style={{ width: `${(item.points / maxVotes) * 100}%` }} />
+                                                    <div style={{ height: "8px", background: "var(--border-light)", borderRadius: "4px", overflow: "hidden" }}>
+                                                        <div style={{
+                                                            height: "100%", borderRadius: "4px",
+                                                            background: idx === 0 ? "var(--primary)" : "var(--primary-light)",
+                                                            width: `${(r.votes / familyMembers.length) * 100}%`,
+                                                            transition: "width 0.3s ease"
+                                                        }} />
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
                                     )}
 
-                                    <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
-                                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={handlePlanWinners}>
-                                            Plan Winners
+                                    {totalVotes > 0 && results[0]?.votes > 0 && (
+                                        <button className="btn btn-primary" style={{ width: "100%", padding: "14px", fontSize: "16px", marginTop: "16px" }}
+                                            onClick={() => handlePlanWinner(results[0])}>
+                                            🍽️ Plan "{results[0].name}" for {getNightLabel()}!
                                         </button>
-                                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>Done</button>
-                                    </div>
+                                    )}
+
+                                    <button className="btn" style={{ width: "100%", padding: "10px", marginTop: "8px", fontSize: "13px", background: "none", border: "none", color: "var(--text-light)", cursor: "pointer" }}
+                                        onClick={() => setVotingStep("send")}>
+                                        ← Back to share
+                                    </button>
                                 </>
                             )}
                         </div>
