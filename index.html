@@ -37,17 +37,17 @@
 
         html, body {
             width: 100%;
-            min-height: 100%;
+            margin: 0;
+            padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background: var(--cream);
             color: var(--text-dark);
-            margin: 0;
-            padding: 0;
+            -webkit-overflow-scrolling: touch;
         }
 
         #root {
             width: 100%;
-            min-height: 100%;
+            min-height: 100vh;
         }
 
         .app-container {
@@ -1143,6 +1143,8 @@
             // Feature: Quick Fill
             const [showQuickFillModal, setShowQuickFillModal] = useState(false);
             const [quickFillPreview, setQuickFillPreview] = useState([]);
+            // Feature: Recipe Import
+            const [showImportModal, setShowImportModal] = useState(false);
 
             // Get active family members
             const familyMembers = FAMILY_MEMBERS.map(m => {
@@ -1217,7 +1219,7 @@
                     id: `custom-${Date.now()}`,
                     rating: 0,
                     ratings: {},
-                    steps: [],
+                    steps: newMeal.steps || [],
                     recipeUrl: ""
                 };
                 const updatedMeals = [...meals, mealWithId];
@@ -1463,6 +1465,11 @@
                             {currentView === "recipes" && (
                                 <div className="view active">
                                     <div style={{ padding: "12px" }}>
+                                        <div style={{ padding: "0 12px", marginBottom: "12px" }}>
+                                            <button onClick={() => setShowImportModal(true)} className="btn btn-primary" style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "12px", fontSize: "15px" }}>
+                                                📸 Import Recipe (Photo or Text)
+                                            </button>
+                                        </div>
                                         <div style={{ padding: "0 12px" }}>
                                             {["American", "Mexican", "Asian", "Mediterranean", "Indian"].map(cuisine => (
                                                 <div key={cuisine}>
@@ -1742,7 +1749,16 @@
                     )}
 
                     {showAddMealModal && (
-                        <AddMealModal onClose={() => { setShowAddMealModal(false); setAddMealInitialName(""); }} onSave={handleAddMeal} initialName={addMealInitialName} />
+                        <AddMealModal onClose={() => { setShowAddMealModal(false); setAddMealInitialName(""); }} onSave={handleAddMeal} initialName={addMealInitialName} importData={window.__importData || null} />
+                    )}
+
+                    {showImportModal && (
+                        <ImportRecipeModal onClose={() => setShowImportModal(false)} onImport={(data) => {
+                            setShowImportModal(false);
+                            window.__importData = data;
+                            setAddMealInitialName(data.name || "");
+                            setShowAddMealModal(true);
+                        }} />
                     )}
 
                     {selectedMeal && (
@@ -2491,15 +2507,257 @@
             );
         }
 
-        function AddMealModal({ onClose, onSave, initialName }) {
+        function ImportRecipeModal({ onClose, onImport }) {
+            const [mode, setMode] = useState(null); // null, "text", "photo"
+            const [pastedText, setPastedText] = useState("");
+            const [isParsing, setIsParsing] = useState(false);
+            const [photoPreview, setPhotoPreview] = useState(null);
+            const fileInputRef = useRef(null);
+
+            const parseRecipeText = (text) => {
+                // Smart recipe parser - extracts name, ingredients, steps from raw text
+                const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+                if (lines.length === 0) return null;
+
+                let name = "";
+                let ingredients = [];
+                let steps = [];
+                let notes = "";
+                let cuisine = "American";
+                let prepTime = 30;
+                let prepType = "fresh";
+                let currentSection = "unknown";
+
+                // Common section headers
+                const ingredientHeaders = /^(ingredients|what you.?ll need|you.?ll need|shopping list)/i;
+                const stepHeaders = /^(instructions|directions|steps|method|preparation|how to make|procedure)/i;
+                const noteHeaders = /^(notes|tips|chef.?s? notes|serving)/i;
+
+                // Detect if a line looks like an ingredient
+                const looksLikeIngredient = (line) => {
+                    const clean = line.replace(/^[-•*◦▪▸►]\s*/, "").replace(/^\d+[.)]\s*/, "");
+                    // Has a quantity pattern at start
+                    if (/^(\d+\/?\d*|½|⅓|⅔|¼|¾|⅛)\s/.test(clean)) return true;
+                    // Has a unit
+                    if (/^(a |one |two |three )/i.test(clean)) return true;
+                    if (/\b(cup|tbsp|tsp|oz|lb|pound|clove|can|bunch|pinch|dash|package|pkg|bag)\b/i.test(clean)) return true;
+                    return false;
+                };
+
+                // Detect if a line looks like a step
+                const looksLikeStep = (line) => {
+                    const clean = line.replace(/^(step\s*)?\d+[.):\s]+/i, "").trim();
+                    if (/^(preheat|heat|cook|bake|roast|grill|mix|combine|stir|add|chop|dice|mince|season|serve|let|place|bring|pour|whisk|set|drain|remove|transfer|reduce|simmer|boil|sauté|sear|slice|cut|toss|fold|cover|spread|brush|arrange|flip|top|garnish|sprinkle|drizzle)/i.test(clean)) return true;
+                    if (clean.length > 40) return true; // Long sentences are likely steps
+                    return false;
+                };
+
+                // Guess cuisine from keywords
+                const textLower = text.toLowerCase();
+                if (/taco|burrito|enchilada|salsa|tortilla|queso|jalapeño|cilantro|cumin/i.test(textLower)) cuisine = "Mexican";
+                else if (/soy sauce|ginger|sesame|wok|stir.?fry|teriyaki|ramen|rice noodle|tofu|miso/i.test(textLower)) cuisine = "Asian";
+                else if (/olive oil|feta|hummus|pita|tahini|oregano|mediterranean|greek/i.test(textLower)) cuisine = "Mediterranean";
+                else if (/curry|masala|turmeric|naan|dal|paneer|tikka|tandoori|basmati/i.test(textLower)) cuisine = "Indian";
+
+                // Guess prep time
+                const timeMatch = text.match(/(\d+)\s*(min|minute|hr|hour)/i);
+                if (timeMatch) {
+                    prepTime = parseInt(timeMatch[1]);
+                    if (/hr|hour/i.test(timeMatch[2])) prepTime *= 60;
+                }
+                if (prepTime > 45 || /slow.?cook|crockpot|crock.?pot|dutch oven|braise/i.test(textLower)) prepType = "prep";
+
+                // First non-header line is probably the recipe name
+                for (let i = 0; i < Math.min(3, lines.length); i++) {
+                    const line = lines[i];
+                    if (!ingredientHeaders.test(line) && !stepHeaders.test(line) && line.length < 80 && !looksLikeIngredient(line) && !looksLikeStep(line)) {
+                        name = line.replace(/^#+\s*/, "").replace(/recipe$/i, "").trim();
+                        lines.splice(i, 1);
+                        break;
+                    }
+                }
+
+                // Parse remaining lines into sections
+                for (const line of lines) {
+                    const cleanLine = line.replace(/^[-•*◦▪▸►]\s*/, "").replace(/^\d+[.)]\s*/, "").trim();
+                    if (!cleanLine) continue;
+
+                    if (ingredientHeaders.test(cleanLine)) { currentSection = "ingredients"; continue; }
+                    if (stepHeaders.test(cleanLine)) { currentSection = "steps"; continue; }
+                    if (noteHeaders.test(cleanLine)) { currentSection = "notes"; continue; }
+
+                    if (currentSection === "ingredients" || (currentSection === "unknown" && looksLikeIngredient(cleanLine))) {
+                        ingredients.push(cleanLine);
+                        if (currentSection === "unknown") currentSection = "ingredients";
+                    } else if (currentSection === "steps" || (currentSection === "unknown" && looksLikeStep(cleanLine))) {
+                        const stepClean = cleanLine.replace(/^(step\s*)?\d+[.):\s]+/i, "").trim();
+                        steps.push(stepClean);
+                        if (currentSection === "unknown") currentSection = "steps";
+                    } else if (currentSection === "notes") {
+                        notes += (notes ? " " : "") + cleanLine;
+                    } else {
+                        // Ambiguous - try to classify
+                        if (looksLikeIngredient(cleanLine)) ingredients.push(cleanLine);
+                        else if (cleanLine.length > 30) steps.push(cleanLine);
+                        else notes += (notes ? " " : "") + cleanLine;
+                    }
+                }
+
+                return {
+                    name,
+                    cuisine,
+                    prepTime,
+                    prepType,
+                    ingredients: ingredients.join("\n"),
+                    steps: steps.join("\n"),
+                    notes
+                };
+            };
+
+            const handleTextImport = () => {
+                if (!pastedText.trim()) return;
+                setIsParsing(true);
+                setTimeout(() => {
+                    const parsed = parseRecipeText(pastedText);
+                    setIsParsing(false);
+                    if (parsed) {
+                        onImport(parsed);
+                    } else {
+                        alert("Couldn't parse recipe. Try pasting the full recipe with ingredients and steps.");
+                    }
+                }, 300);
+            };
+
+            const handlePhotoCapture = (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    setPhotoPreview(ev.target.result);
+                };
+                reader.readAsDataURL(file);
+
+                // Use OCR-like extraction via canvas for text
+                // On mobile, this gives the user the photo - they'll need to also paste the text
+                // For now, show the photo and prompt them to type/paste the recipe text
+                setMode("photo-review");
+            };
+
+            const modeSelectUI = (
+                <div style={{ padding: "20px" }}>
+                    <div style={{ fontSize: "14px", color: "var(--text-light)", marginBottom: "20px", textAlign: "center" }}>
+                        How would you like to import your recipe?
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        <button onClick={() => setMode("text")} className="btn" style={{
+                            padding: "20px", fontSize: "16px", background: "white", border: "2px solid var(--border-light)",
+                            borderRadius: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "12px"
+                        }}>
+                            <span style={{ fontSize: "28px" }}>📋</span>
+                            <div style={{ textAlign: "left" }}>
+                                <div style={{ fontWeight: "700", color: "var(--text-dark)" }}>Paste Recipe Text</div>
+                                <div style={{ fontSize: "12px", color: "var(--text-light)", marginTop: "2px" }}>Copy from a website, message, or note</div>
+                            </div>
+                        </button>
+                        <button onClick={() => fileInputRef.current?.click()} className="btn" style={{
+                            padding: "20px", fontSize: "16px", background: "white", border: "2px solid var(--border-light)",
+                            borderRadius: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "12px"
+                        }}>
+                            <span style={{ fontSize: "28px" }}>📸</span>
+                            <div style={{ textAlign: "left" }}>
+                                <div style={{ fontWeight: "700", color: "var(--text-dark)" }}>Take Photo / Upload Image</div>
+                                <div style={{ fontSize: "12px", color: "var(--text-light)", marginTop: "2px" }}>Snap a photo of a recipe card or cookbook page</div>
+                            </div>
+                        </button>
+                        <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoCapture} style={{ display: "none" }} />
+                    </div>
+                </div>
+            );
+
+            const textInputUI = (
+                <div style={{ padding: "20px" }}>
+                    <div style={{ fontSize: "13px", color: "var(--text-light)", marginBottom: "12px" }}>
+                        Paste the full recipe below — include the name, ingredients, and steps. The parser will auto-detect each section.
+                    </div>
+                    <textarea
+                        value={pastedText}
+                        onChange={(e) => setPastedText(e.target.value)}
+                        placeholder={"Grandma's Chicken Pot Pie\n\nIngredients:\n2 cups shredded chicken\n1 cup frozen peas and carrots\n1/3 cup butter\n1/3 cup flour\n...\n\nInstructions:\n1. Preheat oven to 425°F\n2. Melt butter in a saucepan..."}
+                        style={{
+                            width: "100%", minHeight: "250px", padding: "12px", borderRadius: "8px",
+                            border: "1px solid var(--border-light)", fontSize: "14px", fontFamily: "inherit",
+                            resize: "vertical", lineHeight: "1.5"
+                        }}
+                    />
+                    <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                        <button onClick={() => setMode(null)} className="btn" style={{ flex: 1, padding: "12px", background: "white", border: "1px solid var(--border-light)", borderRadius: "8px", cursor: "pointer" }}>Back</button>
+                        <button onClick={handleTextImport} className="btn btn-primary" style={{ flex: 2, padding: "12px" }} disabled={!pastedText.trim() || isParsing}>
+                            {isParsing ? "Parsing..." : "Parse Recipe"}
+                        </button>
+                    </div>
+                </div>
+            );
+
+            const photoReviewUI = (
+                <div style={{ padding: "20px" }}>
+                    {photoPreview && (
+                        <div style={{ marginBottom: "12px", borderRadius: "8px", overflow: "hidden" }}>
+                            <img src={photoPreview} alt="Recipe photo" style={{ width: "100%", maxHeight: "200px", objectFit: "cover" }} />
+                        </div>
+                    )}
+                    <div style={{ fontSize: "13px", color: "var(--text-light)", marginBottom: "12px" }}>
+                        Photo captured! Now type or paste the recipe text you see in the image. Include the name, ingredients, and steps.
+                    </div>
+                    <textarea
+                        value={pastedText}
+                        onChange={(e) => setPastedText(e.target.value)}
+                        placeholder="Type what you see in the photo..."
+                        style={{
+                            width: "100%", minHeight: "200px", padding: "12px", borderRadius: "8px",
+                            border: "1px solid var(--border-light)", fontSize: "14px", fontFamily: "inherit",
+                            resize: "vertical", lineHeight: "1.5"
+                        }}
+                    />
+                    <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                        <button onClick={() => { setMode(null); setPhotoPreview(null); setPastedText(""); }} className="btn" style={{ flex: 1, padding: "12px", background: "white", border: "1px solid var(--border-light)", borderRadius: "8px", cursor: "pointer" }}>Back</button>
+                        <button onClick={handleTextImport} className="btn btn-primary" style={{ flex: 2, padding: "12px" }} disabled={!pastedText.trim() || isParsing}>
+                            {isParsing ? "Parsing..." : "Parse Recipe"}
+                        </button>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="modal active" onClick={(e) => e.target === e.currentTarget && onClose()}>
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <div>📸 Import Recipe</div>
+                            <button className="modal-close" onClick={onClose}>✕</button>
+                        </div>
+                        {mode === null && modeSelectUI}
+                        {mode === "text" && textInputUI}
+                        {mode === "photo-review" && photoReviewUI}
+                    </div>
+                </div>
+            );
+        }
+
+        function AddMealModal({ onClose, onSave, initialName, importData }) {
+            const imported = importData || window.__importData || null;
             const [formData, setFormData] = useState({
-                name: initialName || "",
-                cuisine: "American",
-                prepTime: 30,
-                prepType: "fresh",
-                ingredients: "",
-                notes: ""
+                name: imported?.name || initialName || "",
+                cuisine: imported?.cuisine || "American",
+                prepTime: imported?.prepTime || 30,
+                prepType: imported?.prepType || "fresh",
+                ingredients: imported?.ingredients || "",
+                notes: imported?.notes || "",
+                steps: imported?.steps || ""
             });
+
+            // Clear import data after using it
+            useState(() => { window.__importData = null; });
 
             const handleChange = (e) => {
                 const { name, value } = e.target;
@@ -2514,7 +2772,8 @@
                 if (formData.name.trim()) {
                     onSave({
                         ...formData,
-                        ingredients: formData.ingredients.split(",").map(i => i.trim()).filter(Boolean)
+                        ingredients: formData.ingredients.split(/[,\n]/).map(i => i.trim()).filter(Boolean),
+                        steps: formData.steps ? formData.steps.split(/\n/).map(s => s.trim()).filter(Boolean) : []
                     });
                 }
             };
@@ -2561,11 +2820,16 @@
                             </div>
 
                             <div className="form-group">
+                                <label>Steps (one per line, optional)</label>
+                                <textarea name="steps" value={formData.steps} onChange={handleChange} placeholder="e.g., Preheat oven to 400°F&#10;Season the chicken..." rows={4} />
+                            </div>
+
+                            <div className="form-group">
                                 <label>Notes</label>
                                 <textarea name="notes" value={formData.notes} onChange={handleChange} placeholder="e.g., Serve with roasted vegetables" />
                             </div>
 
-                            <button type="submit" className="btn btn-primary" style={{ width: "100%" }}>Add Meal</button>
+                            <button type="submit" className="btn btn-primary" style={{ width: "100%" }}>{imported ? "Import Meal" : "Add Meal"}</button>
                         </form>
                     </div>
                 </div>
