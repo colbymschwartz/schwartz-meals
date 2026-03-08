@@ -747,6 +747,10 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Firebase SDK (compat for global namespace) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
@@ -955,6 +959,99 @@
             return copy;
         };
 
+        // ========== FIREBASE REAL-TIME SYNC ==========
+        // Colby: Paste your Firebase config below (from Firebase Console > Project Settings)
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyB5mkuedBq3lOBS4pzRb7caYFwpfyUcIiI",
+            authDomain: "meals-489e9.firebaseapp.com",
+            databaseURL: "https://meals-489e9-default-rtdb.firebaseio.com",
+            projectId: "meals-489e9"
+        };
+
+        // Firebase initialization
+        let db = null;
+        let firebaseReady = false;
+        let _skipFirebaseListenerUpdate = {};
+
+        if (FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.databaseURL) {
+            try {
+                firebase.initializeApp(FIREBASE_CONFIG);
+                db = firebase.database();
+                firebase.auth().signInAnonymously().then(() => {
+                    firebaseReady = true;
+                    console.log("[Firebase] Connected and authenticated");
+                }).catch(err => console.warn("[Firebase] Auth error:", err.message));
+            } catch(e) {
+                console.warn("[Firebase] Init error:", e.message);
+            }
+        } else {
+            console.log("[Firebase] No config found — running in local-only mode. Add your Firebase config to enable sync.");
+        }
+
+        // Debounce helper
+        const createDebounce = (fn, delay) => {
+            let timer;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn(...args), delay);
+            };
+        };
+
+        // Firebase adapter
+        const firebaseAdapter = {
+            _listeners: {},
+
+            write: (key, data) => {
+                if (!firebaseReady || !db) return;
+                _skipFirebaseListenerUpdate[key] = true;
+                setTimeout(() => { _skipFirebaseListenerUpdate[key] = false; }, 1500);
+                db.ref(key).set(data).catch(err => console.warn("[Firebase] Write error:", key, err.message));
+            },
+
+            listen: (key, callback) => {
+                if (!db) return;
+                const ref = db.ref(key);
+                ref.on("value", snap => {
+                    if (_skipFirebaseListenerUpdate[key]) return;
+                    const data = snap.val();
+                    if (data !== null && data !== undefined) {
+                        callback(data);
+                    }
+                });
+                firebaseAdapter._listeners[key] = ref;
+            },
+
+            stopAll: () => {
+                Object.values(firebaseAdapter._listeners).forEach(ref => ref.off());
+                firebaseAdapter._listeners = {};
+            },
+
+            seedIfEmpty: async (key, data) => {
+                if (!firebaseReady || !db) return;
+                try {
+                    const snap = await db.ref(key).once("value");
+                    if (!snap.exists()) {
+                        await db.ref(key).set(data);
+                        console.log("[Firebase] Seeded:", key);
+                    }
+                } catch(e) {
+                    console.warn("[Firebase] Seed error:", key, e.message);
+                }
+            }
+        };
+
+        // Debounced Firebase writes (one per data store)
+        const fbWrite = {
+            meals: createDebounce((d) => firebaseAdapter.write("meals", d), 800),
+            weekPlan: createDebounce((d) => firebaseAdapter.write("weekPlan", d), 500),
+            familySettings: createDebounce((d) => firebaseAdapter.write("familySettings", d), 500),
+            shoppingList: createDebounce((d) => firebaseAdapter.write("shoppingList", d), 500),
+            settings: createDebounce((d) => firebaseAdapter.write("settings", d), 500),
+            dealsNotepad: createDebounce((d) => firebaseAdapter.write("dealsNotepad", d), 500),
+            manualShoppingItems: createDebounce((d) => firebaseAdapter.write("manualShoppingItems", d), 300),
+            shoppingChecked: createDebounce((d) => firebaseAdapter.write("shoppingChecked", d), 200)
+        };
+
         // Storage utilities
         const storage = {
             getMeals: () => {
@@ -984,27 +1081,34 @@
                 }
                 return existing;
             },
-            saveMeals: (meals) => localStorage.setItem("meals", JSON.stringify(meals)),
+            saveMeals: (meals) => {
+                localStorage.setItem("meals", JSON.stringify(meals));
+                fbWrite.meals(meals);
+            },
 
             getWeekPlan: () => {
                 const stored = localStorage.getItem("weekPlan");
                 return stored ? JSON.parse(stored) : {};
             },
-            saveWeekPlan: (plan) => localStorage.setItem("weekPlan", JSON.stringify(plan)),
+            saveWeekPlan: (plan) => {
+                localStorage.setItem("weekPlan", JSON.stringify(plan));
+                fbWrite.weekPlan(plan);
+            },
 
             getFamilySettings: () => {
                 const stored = localStorage.getItem("familySettings");
                 return stored ? JSON.parse(stored) : FAMILY_MEMBERS.reduce((acc, m) => ({ ...acc, [m.id]: { ...m } }), {});
             },
-            saveFamilySettings: (settings) => localStorage.setItem("familySettings", JSON.stringify(settings)),
+            saveFamilySettings: (settings) => {
+                localStorage.setItem("familySettings", JSON.stringify(settings));
+                fbWrite.familySettings(settings);
+            },
 
             getShoppingList: () => {
                 try {
                     const stored = localStorage.getItem("shoppingList");
                     if (!stored) return {};
                     const parsed = JSON.parse(stored);
-                    // Validate format: values should be objects with 'item' property
-                    // If old format (values are numbers), clear it
                     const firstVal = Object.values(parsed)[0];
                     if (firstVal && typeof firstVal === "number") {
                         localStorage.removeItem("shoppingList");
@@ -1016,13 +1120,28 @@
                     return {};
                 }
             },
-            saveShoppingList: (list) => localStorage.setItem("shoppingList", JSON.stringify(list)),
+            saveShoppingList: (list) => {
+                localStorage.setItem("shoppingList", JSON.stringify(list));
+                fbWrite.shoppingList(list);
+            },
 
             getSettings: () => {
                 const stored = localStorage.getItem("settings");
                 return stored ? JSON.parse(stored) : { useMealDB: true, spoonacularKey: "" };
             },
-            saveSettings: (settings) => localStorage.setItem("settings", JSON.stringify(settings))
+            saveSettings: (settings) => {
+                localStorage.setItem("settings", JSON.stringify(settings));
+                fbWrite.settings(settings);
+            },
+
+            getShoppingChecked: () => {
+                const stored = localStorage.getItem("shoppingChecked");
+                return stored ? JSON.parse(stored) : {};
+            },
+            saveShoppingChecked: (checked) => {
+                localStorage.setItem("shoppingChecked", JSON.stringify(checked));
+                fbWrite.shoppingChecked(checked);
+            }
         };
 
         // Fuzzy search utility - searches name AND ingredients
@@ -1145,6 +1264,10 @@
             const [quickFillPreview, setQuickFillPreview] = useState([]);
             // Feature: Recipe Import
             const [showImportModal, setShowImportModal] = useState(false);
+            // Feature: Shopping list checked sync
+            const [shoppingChecked, setShoppingChecked] = useState(() => storage.getShoppingChecked());
+            // Feature: Firebase sync status
+            const [firebaseConnected, setFirebaseConnected] = useState(false);
 
             // Get active family members
             const familyMembers = FAMILY_MEMBERS.map(m => {
@@ -1160,34 +1283,100 @@
                 return meal && meal.rating >= 4.5;
             };
 
-            // Save data to localStorage
-            useEffect(() => {
-                storage.saveMeals(meals);
-            }, [meals]);
-
-            useEffect(() => {
-                storage.saveWeekPlan(weekPlan);
-            }, [weekPlan]);
-
-            useEffect(() => {
-                storage.saveFamilySettings(familySettings);
-            }, [familySettings]);
-
-            useEffect(() => {
-                storage.saveShoppingList(shoppingList);
-            }, [shoppingList]);
-
-            useEffect(() => {
-                storage.saveSettings(settings);
-            }, [settings]);
-
+            // Save data to localStorage + Firebase
+            useEffect(() => { storage.saveMeals(meals); }, [meals]);
+            useEffect(() => { storage.saveWeekPlan(weekPlan); }, [weekPlan]);
+            useEffect(() => { storage.saveFamilySettings(familySettings); }, [familySettings]);
+            useEffect(() => { storage.saveShoppingList(shoppingList); }, [shoppingList]);
+            useEffect(() => { storage.saveSettings(settings); }, [settings]);
+            useEffect(() => { storage.saveShoppingChecked(shoppingChecked); }, [shoppingChecked]);
             useEffect(() => {
                 localStorage.setItem("dealsNotepad", dealsNotepad);
+                fbWrite.dealsNotepad(dealsNotepad);
             }, [dealsNotepad]);
-
             useEffect(() => {
                 localStorage.setItem("manualShoppingItems", JSON.stringify(manualItems));
+                fbWrite.manualShoppingItems(manualItems);
             }, [manualItems]);
+
+            // Firebase real-time listeners (sync from other devices)
+            useEffect(() => {
+                if (!db) return;
+
+                // Seed Firebase with initial data if empty
+                const initFirebase = async () => {
+                    try {
+                        await firebase.auth().signInAnonymously();
+                        setFirebaseConnected(true);
+                        console.log("[Firebase] Ready, setting up listeners...");
+
+                        // Seed if this is the first device
+                        await firebaseAdapter.seedIfEmpty("meals", storage.getMeals());
+                        await firebaseAdapter.seedIfEmpty("weekPlan", storage.getWeekPlan());
+                        await firebaseAdapter.seedIfEmpty("familySettings", storage.getFamilySettings());
+
+                        // Listen for changes from other devices
+                        firebaseAdapter.listen("meals", (data) => {
+                            if (Array.isArray(data)) {
+                                setMeals(data);
+                                localStorage.setItem("meals", JSON.stringify(data));
+                            }
+                        });
+                        firebaseAdapter.listen("weekPlan", (data) => {
+                            if (data && typeof data === "object") {
+                                setWeekPlan(data);
+                                localStorage.setItem("weekPlan", JSON.stringify(data));
+                            }
+                        });
+                        firebaseAdapter.listen("familySettings", (data) => {
+                            if (data && typeof data === "object") {
+                                setFamilySettings(data);
+                                localStorage.setItem("familySettings", JSON.stringify(data));
+                            }
+                        });
+                        firebaseAdapter.listen("shoppingList", (data) => {
+                            if (data && typeof data === "object") {
+                                setShoppingList(data);
+                                localStorage.setItem("shoppingList", JSON.stringify(data));
+                            }
+                        });
+                        firebaseAdapter.listen("shoppingChecked", (data) => {
+                            if (data && typeof data === "object") {
+                                setShoppingChecked(data);
+                                localStorage.setItem("shoppingChecked", JSON.stringify(data));
+                            }
+                        });
+                        firebaseAdapter.listen("settings", (data) => {
+                            if (data && typeof data === "object") {
+                                setSettings(data);
+                                localStorage.setItem("settings", JSON.stringify(data));
+                            }
+                        });
+                        firebaseAdapter.listen("dealsNotepad", (data) => {
+                            if (typeof data === "string") {
+                                setDealsNotepad(data);
+                                localStorage.setItem("dealsNotepad", data);
+                            }
+                        });
+                        firebaseAdapter.listen("manualShoppingItems", (data) => {
+                            if (Array.isArray(data)) {
+                                setManualItems(data);
+                                localStorage.setItem("manualShoppingItems", JSON.stringify(data));
+                            }
+                        });
+                    } catch(e) {
+                        console.warn("[Firebase] Setup error:", e.message);
+                    }
+                };
+
+                initFirebase();
+                return () => firebaseAdapter.stopAll();
+            }, []);
+
+            // Toggle shopping item checked
+            const toggleShoppingChecked = (itemKey) => {
+                setShoppingChecked(prev => ({ ...prev, [itemKey]: !prev[itemKey] }));
+            };
 
             const addManualItem = () => {
                 const text = newManualItem.trim();
@@ -1592,10 +1781,10 @@
                                                     }).filter(Boolean);
                                                     const hasDeal = dealsNotepad && itemName.split(" ").some(w => w.length > 3 && dealsNotepad.toLowerCase().includes(w.toLowerCase()));
                                                     return (
-                                                        <div key={key} className="ingredient-item">
-                                                            <input type="checkbox" style={{ width: "16px", height: "16px" }} />
+                                                        <div key={key} className="ingredient-item" style={{ opacity: shoppingChecked[key] ? 0.5 : 1 }}>
+                                                            <input type="checkbox" checked={shoppingChecked[key] || false} onChange={() => toggleShoppingChecked(key)} style={{ width: "16px", height: "16px" }} />
                                                             <div style={{ flex: 1 }}>
-                                                                <div style={{ fontWeight: "600" }}>
+                                                                <div style={{ fontWeight: "600", textDecoration: shoppingChecked[key] ? "line-through" : "none" }}>
                                                                     {qty ? qty + " " : ""}{itemName}
                                                                     {hasDeal && <span className="deal-badge"> 🏷️</span>}
                                                                 </div>
@@ -1710,6 +1899,40 @@
                                             </div>
                                             <div style={{ fontSize: "11px", color: "var(--text-light)", padding: "8px 12px" }}>
                                                 Free tier: 150 searches/day. Sign up at spoonacular.com/food-api
+                                            </div>
+
+                                            <div style={{ marginTop: "20px", borderTop: "1px solid var(--border-light)", paddingTop: "16px" }}>
+                                                <div style={{ fontSize: "13px", fontWeight: "700", color: "var(--primary)", marginBottom: "12px" }}>
+                                                    Family Sync (Firebase)
+                                                </div>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                                                    <div style={{
+                                                        width: "10px", height: "10px", borderRadius: "50%",
+                                                        background: firebaseConnected ? "#4CAF50" : (FIREBASE_CONFIG.apiKey ? "#FFC107" : "#999")
+                                                    }} />
+                                                    <span style={{ fontSize: "13px", color: "var(--text-dark)" }}>
+                                                        {firebaseConnected ? "Connected — syncing across all devices" :
+                                                         FIREBASE_CONFIG.apiKey ? "Connecting..." :
+                                                         "Not set up — each device has its own data"}
+                                                    </span>
+                                                </div>
+                                                {!FIREBASE_CONFIG.apiKey && (
+                                                    <div style={{ fontSize: "12px", color: "var(--text-light)", padding: "12px", background: "var(--cream)", borderRadius: "8px", lineHeight: "1.5" }}>
+                                                        To sync meals, shopping lists, and polls across all family phones:
+                                                        <br/><br/>
+                                                        1. Go to <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" style={{ color: "var(--primary)" }}>Firebase Console</a>
+                                                        <br/>2. Create a free project
+                                                        <br/>3. Enable Realtime Database + Anonymous Auth
+                                                        <br/>4. Copy the config and paste it into the app code
+                                                        <br/><br/>
+                                                        Ask Claude for step-by-step help!
+                                                    </div>
+                                                )}
+                                                {firebaseConnected && (
+                                                    <div style={{ fontSize: "12px", color: "var(--text-light)", padding: "8px 12px" }}>
+                                                        All family members see the same meal plan, shopping list, and polls in real time.
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
