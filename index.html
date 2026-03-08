@@ -1,0 +1,2633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#D97757">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Schwartz Meals">
+    <title>Schwartz Family Meals v2</title>
+    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Schwartz%20Family%20Meals%22,%22short_name%22:%22Meals%22,%22description%22:%22Family%20meal%20planning%20made%20easy%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22theme_color%22:%22%23D97757%22,%22background_color%22:%22%23ffffff%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23D97757' width='192' height='192'/><text x='96' y='130' font-size='120' font-weight='bold' fill='white' text-anchor='middle' font-family='system-ui'>🍽</text></svg>%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22,%22purpose%22:%22any%22}]}">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23D97757' width='192' height='192'/><text x='96' y='130' font-size='120' font-weight='bold' fill='white' text-anchor='middle' font-family='system-ui'>🍽</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23D97757' width='192' height='192'/><text x='96' y='130' font-size='120' font-weight='bold' fill='white' text-anchor='middle' font-family='system-ui'>🍽</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #D97757;
+            --primary-dark: #C5644A;
+            --primary-light: #E8A89F;
+            --accent: #6B9E7F;
+            --accent-light: #A8D4BA;
+            --cream: #FFF8F3;
+            --text-dark: #2C2C2C;
+            --text-light: #6C6C6C;
+            --border-light: #E8E8E8;
+            --success: #6B9E7F;
+            --warning: #E8A89F;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--cream);
+            color: var(--text-dark);
+            overflow: hidden;
+        }
+
+        #root {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: var(--cream);
+        }
+
+        .app-header {
+            background: var(--primary);
+            color: white;
+            padding: 16px;
+            box-shadow: var(--shadow-md);
+            position: relative;
+            z-index: 10;
+        }
+
+        .app-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .app-header .subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+
+        .app-content {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 80px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .view {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .view.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: white;
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-around;
+            align-items: stretch;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-light);
+            text-decoration: none;
+            border: none;
+            background: none;
+            font-size: 12px;
+            gap: 4px;
+            transition: color 0.3s;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .nav-icon {
+            font-size: 24px;
+        }
+
+        .nav-label {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 12px;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.3s, transform 0.2s;
+            cursor: pointer;
+        }
+
+        .card:active {
+            transform: scale(0.98);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .hero-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            margin: 12px;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            text-align: center;
+        }
+
+        .hero-card h2 {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .hero-card .meal-name {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+
+        .hero-card .cuisine-tag {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.25);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:active {
+            background: var(--primary-dark);
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: var(--border-light);
+            color: var(--text-dark);
+        }
+
+        .btn-secondary:active {
+            background: #D8D8D8;
+            transform: scale(0.98);
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px 16px 0 0;
+            max-width: 100%;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-light);
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-dark);
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .meal-card {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-light);
+        }
+
+        .meal-card-icon {
+            font-size: 32px;
+            min-width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .meal-card-info {
+            flex: 1;
+        }
+
+        .meal-card-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .meal-card-meta {
+            font-size: 12px;
+            color: var(--text-light);
+            display: flex;
+            gap: 8px;
+        }
+
+        .cuisine-badge {
+            background: var(--primary-light);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .detail-section {
+            margin-bottom: 20px;
+            padding: 0 20px;
+        }
+
+        .detail-section-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-dark);
+        }
+
+        .ingredient-item {
+            padding: 10px;
+            background: var(--cream);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cooking-step {
+            padding: 12px;
+            background: var(--cream);
+            border-radius: 6px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .cooking-step-number {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 24px;
+            font-weight: 700;
+            margin-right: 8px;
+            font-size: 12px;
+        }
+
+        .ratings-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .rating-item {
+            padding: 12px;
+            background: var(--cream);
+            border-radius: 8px;
+        }
+
+        .rating-member {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .rating-stars {
+            display: flex;
+            gap: 4px;
+        }
+
+        .star {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state-text {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        .search-input {
+            padding: 12px 16px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            font-size: 14px;
+            width: 100%;
+            margin: 12px;
+            max-width: calc(100% - 24px);
+        }
+
+        .recipe-menu-option {
+            padding: 16px;
+            background: white;
+            border-bottom: 1px solid var(--border-light);
+            text-align: center;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .recipe-menu-option:active {
+            background: var(--cream);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+
+        .setting-item {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .setting-label {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .meal-slot {
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-light);
+            cursor: pointer;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .meal-slot.empty {
+            background: var(--cream);
+            color: var(--text-light);
+        }
+
+        .meal-slot-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .meal-slot-icon {
+            font-size: 24px;
+        }
+
+        .meal-slot-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .recipe-search-results {
+            margin: 0;
+            padding: 0;
+        }
+
+        .search-result-item {
+            padding: 12px;
+            background: white;
+            border-bottom: 1px solid var(--border-light);
+            cursor: pointer;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .search-result-item:active {
+            background: var(--cream);
+        }
+
+        .search-result-icon {
+            font-size: 28px;
+        }
+
+        .search-result-text {
+            flex: 1;
+        }
+
+        .search-result-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .search-result-meta {
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        @media (min-width: 768px) {
+            .bottom-nav {
+                position: static;
+                height: auto;
+                flex-direction: column;
+                width: 200px;
+                border-top: none;
+                border-right: 1px solid var(--border-light);
+                box-shadow: none;
+            }
+
+            .app-container {
+                flex-direction: row;
+            }
+
+            .app-container > div:first-child {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .nav-item {
+                flex-direction: row;
+                gap: 12px;
+                padding: 12px 20px;
+            }
+
+            .nav-label {
+                font-size: 14px;
+            }
+
+            .hero-card .meal-name {
+                font-size: 48px;
+            }
+        }
+
+        .prep-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 6px;
+        }
+        .prep-badge.prep { background: var(--accent-light); color: #2d5a3d; }
+        .prep-badge.fresh { background: #FFE8D6; color: #8B4513; }
+
+        .vote-candidate {
+            padding: 10px 12px;
+            border: 2px solid var(--border-light);
+            border-radius: 8px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .vote-candidate.selected {
+            border-color: var(--primary);
+            background: #FFF0EB;
+        }
+
+        .vote-tally-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--cream);
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+        .vote-tally-bar {
+            height: 8px;
+            background: var(--primary);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .deal-badge {
+            display: inline-block;
+            font-size: 10px;
+            margin-left: 4px;
+        }
+
+        .deals-notepad {
+            width: 100%;
+            min-height: 80px;
+            padding: 10px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .store-link {
+            display: inline-block;
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            text-decoration: none;
+            margin: 4px;
+            transition: all 0.2s;
+        }
+        .store-link:active { background: var(--cream); }
+
+        .quick-fill-preview {
+            padding: 8px 12px;
+            background: var(--cream);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .claude-tip {
+            background: linear-gradient(135deg, #F0E6FF, #E8F4F8);
+            border: 1px solid #D4C5F0;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 13px;
+            color: #4A3B6B;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"><div style="padding:40px;text-align:center;color:#666">Loading Schwartz Family Meals...</div></div>
+
+    <script>
+        // Global error handler — shows errors on screen instead of blank page
+        window.onerror = function(msg, url, line, col, error) {
+            document.getElementById('root').innerHTML = '<div style="padding:20px;color:red;font-family:monospace;white-space:pre-wrap"><h2>App Error</h2>' + msg + '\nLine: ' + line + '\n\nFull error: ' + (error ? error.stack : 'none') + '</div>';
+            return false;
+        };
+    </script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Cuisine icons
+        const CUISINE_ICONS = {
+            "American": "🍔",
+            "Mexican": "🌮",
+            "Asian": "🍜",
+            "Mediterranean": "🐟",
+            "Indian": "🍛"
+        };
+
+        const MEAL_ICONS = {
+            "American": "🥩",
+            "Mexican": "🌯",
+            "Asian": "🥢",
+            "Mediterranean": "🫒",
+            "Indian": "🍛"
+        };
+
+        // Expanded recipe database (75+ recipes with quantities and steps)
+        const SEED_MEALS = [
+            // American (15 recipes)
+            { id: "grilled-ribeye", name: "Grilled Ribeye Steak", cuisine: "American", prepTime: 30, ingredients: ["2 lbs ribeye steak", "1 tsp salt", "1 tsp black pepper", "3 tbsp butter", "4 cloves garlic"], steps: ["Heat grill to high", "Pat steaks dry and season", "Grill 4-5 minutes per side", "Add butter and garlic in final minute", "Rest 5 minutes before serving"], recipeUrl: "", notes: "Medium rare perfection", rating: 4.8, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "bbq-chicken", name: "BBQ Chicken", cuisine: "American", prepTime: 45, ingredients: ["4 chicken breasts", "1 cup BBQ sauce", "3 tbsp honey", "1 tsp garlic powder", "1 tsp paprika"], steps: ["Preheat oven to 375F", "Mix BBQ sauce with honey", "Place chicken in baking dish", "Brush sauce over chicken", "Bake 30-35 minutes until internal temp 165F"], recipeUrl: "", notes: "Grilled or baked", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 5, chandler: 4 }, prepType: "fresh" },
+            { id: "mac-cheese", name: "Mac & Cheese", cuisine: "American", prepTime: 25, ingredients: ["1 lb pasta", "4 tbsp butter", "3 tbsp flour", "2 cups milk", "3 cups cheddar cheese", "1 cup gruyere cheese"], steps: ["Cook pasta until al dente", "Make roux with butter and flour", "Add milk and whisk until thick", "Stir in cheeses", "Combine with pasta and serve"], recipeUrl: "", notes: "Creamy and comforting", rating: 4.6, ratings: { colby: 5, samantha: 4, cade: 5, chandler: 5 }, prepType: "fresh" },
+            { id: "burger-night", name: "Burger Night", cuisine: "American", prepTime: 20, ingredients: ["2 lbs ground beef", "8 burger buns", "2 cups lettuce", "3 tomatoes", "2 onions", "2 cups cheddar cheese"], steps: ["Form beef into 8 patties", "Season with salt and pepper", "Grill 3-4 minutes per side", "Toast buns", "Assemble with toppings"], recipeUrl: "", notes: "Classic home-style", rating: 4.4, ratings: { colby: 5, samantha: 4, cade: 5, chandler: 4 }, prepType: "fresh" },
+            { id: "roast-chicken", name: "Roast Chicken", cuisine: "American", prepTime: 60, ingredients: ["1 whole chicken (5 lbs)", "3 tbsp mixed herbs", "2 lemons", "6 cloves garlic", "3 lbs root vegetables"], steps: ["Preheat oven to 425F", "Stuff chicken with lemon and garlic", "Rub with herbs", "Add vegetables to pan", "Roast 1.5 hours until golden"], recipeUrl: "", notes: "Family favorite", rating: 4.7, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "meatloaf", name: "Meatloaf", cuisine: "American", prepTime: 50, ingredients: ["2 lbs ground beef", "1 cup bread crumbs", "2 eggs", "1 large onion", "1 cup ketchup", "2 tbsp Worcestershire sauce"], steps: ["Mix meat with bread crumbs and eggs", "Add chopped onion and Worcestershire", "Shape into loaf pan", "Top with ketchup", "Bake at 350F for 45 minutes"], recipeUrl: "", notes: "Classic comfort food", rating: 4.3, ratings: { colby: 4, samantha: 5, cade: 4, chandler: 4 }, prepType: "prep" },
+            { id: "fried-chicken", name: "Southern Fried Chicken", cuisine: "American", prepTime: 40, ingredients: ["2 lbs chicken pieces", "2 cups all-purpose flour", "2 tsp paprika", "2 tsp garlic powder", "4 cups buttermilk"], steps: ["Marinate chicken in buttermilk", "Mix flour with spices", "Coat each piece", "Heat oil to 350F", "Fry until golden brown and cooked through"], recipeUrl: "", notes: "Crispy on outside, juicy inside", rating: 4.7, ratings: { colby: 5, samantha: 4, cade: 5, chandler: 5 }, prepType: "fresh" },
+            { id: "pot-roast", name: "Pot Roast", cuisine: "American", prepTime: 120, ingredients: ["3 lb chuck roast", "4 potatoes", "3 carrots", "2 onions", "1 cup beef broth", "2 tbsp tomato paste"], steps: ["Brown roast on all sides", "Add vegetables to pot", "Pour in broth and tomato paste", "Cover and simmer 3 hours", "Shred meat and serve with vegetables"], recipeUrl: "", notes: "One-pot comfort meal", rating: 4.6, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 4 }, prepType: "prep" },
+            { id: "pulled-pork", name: "Pulled Pork Sandwiches", cuisine: "American", prepTime: 180, ingredients: ["5 lb pork shoulder", "3 tbsp paprika", "2 tbsp garlic powder", "2 cups BBQ sauce", "8 sandwich buns"], steps: ["Season pork generously", "Smoke or slow cook at 225F for 6 hours", "Shred when fork-tender", "Mix with BBQ sauce", "Serve on buns with coleslaw"], recipeUrl: "", notes: "Perfect for feeding a crowd", rating: 4.8, ratings: { colby: 5, samantha: 5, cade: 5, chandler: 5 }, prepType: "prep" },
+            { id: "meatball-spaghetti", name: "Meatball Spaghetti", cuisine: "American", prepTime: 45, ingredients: ["2 lbs ground beef", "1 cup bread crumbs", "1 egg", "1.5 cups marinara sauce", "1 lb spaghetti", "1 cup parmesan cheese"], steps: ["Form beef mixture into balls", "Brown in pan", "Simmer in marinara sauce", "Cook spaghetti", "Combine and top with cheese"], recipeUrl: "", notes: "Classic comfort food", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "beef-stew", name: "Beef Stew", cuisine: "American", prepTime: 90, ingredients: ["2 lbs beef chuck", "4 potatoes", "3 carrots", "2 onions", "3 cups beef broth", "2 tbsp flour"], steps: ["Brown beef chunks", "Dust with flour", "Add vegetables", "Pour in broth", "Simmer 1.5-2 hours until tender"], recipeUrl: "", notes: "Hearty and warming", rating: 4.6, ratings: { colby: 5, samantha: 4, cade: 5, chandler: 4 }, prepType: "prep" },
+            { id: "turkey-meatballs", name: "Turkey Meatballs", cuisine: "American", prepTime: 35, ingredients: ["2 lbs ground turkey", "1 cup panko breadcrumbs", "1 egg", "1/4 cup milk", "3 cloves garlic", "1 cup marinara sauce"], steps: ["Combine turkey with breadcrumbs and egg", "Form into balls", "Bake at 400F for 20 minutes", "Simmer in marinara", "Serve with pasta or rice"], recipeUrl: "", notes: "Lighter meatball option", rating: 4.4, ratings: { colby: 4, samantha: 4, cade: 5, chandler: 4 }, prepType: "fresh" },
+            { id: "mashed-potatoes", name: "Loaded Mashed Potatoes", cuisine: "American", prepTime: 30, ingredients: ["3 lbs potatoes", "4 tbsp butter", "1 cup heavy cream", "1 cup cheddar cheese", "6 slices bacon", "3 tbsp chives"], steps: ["Boil potatoes until tender", "Drain and mash", "Add butter and cream", "Stir in cheese and bacon", "Top with chives"], recipeUrl: "", notes: "Creamy and loaded with flavor", rating: 4.7, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "tuna-casserole", name: "Tuna Casserole", cuisine: "American", prepTime: 40, ingredients: ["2 cans tuna", "12 oz egg noodles", "2 cups mushroom soup", "1 cup milk", "2 cups frozen peas", "1 cup breadcrumbs"], steps: ["Cook noodles and drain", "Mix soup with milk", "Combine with tuna, noodles, and peas", "Pour into casserole dish", "Top with breadcrumbs and bake at 350F for 25 minutes"], recipeUrl: "", notes: "Classic casserole comfort", rating: 4.3, ratings: { colby: 4, samantha: 4, cade: 3, chandler: 4 }, prepType: "fresh" },
+            { id: "turkey-chili", name: "Turkey Chili", cuisine: "American", prepTime: 50, ingredients: ["2 lbs ground turkey", "2 cans kidney beans", "2 cans tomato sauce", "1 large onion", "2 tbsp chili powder", "1 tbsp cumin"], steps: ["Brown turkey in large pot", "Add onions and spices", "Stir in beans and tomato sauce", "Simmer 30-40 minutes", "Taste and adjust seasonings"], recipeUrl: "", notes: "Hearty and satisfying", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 4, chandler: 5 }, prepType: "prep" },
+            { id: "colby-beef-chili", name: "Schwartz Beef Chili", cuisine: "American", prepTime: 60, ingredients: ["3 lbs chuck roast, cut into 1/2-inch cubes", "1 lb ground beef", "2 cans kidney beans", "1 can pinto beans", "1 can fire-roasted diced tomatoes", "1 can tomato paste", "1 large yellow onion, diced", "1 poblano pepper, diced", "2 jalapeños, seeded and minced", "6 cloves garlic, minced", "3 tbsp chili powder", "2 tbsp cumin", "1 tbsp smoked paprika", "1 tsp cayenne pepper", "1 tsp oregano", "2 cups beef broth", "2 tbsp olive oil", "2 tbsp brown sugar", "1 tbsp apple cider vinegar", "Salt and pepper to taste"], steps: ["Season chuck cubes with salt, pepper, and half the chili powder", "Heat olive oil in a large Dutch oven over high heat — sear chuck in batches until deeply browned, set aside", "In the same pot, brown the ground beef and drain excess fat", "Add onion, poblano, and jalapeños — cook 5 minutes until soft", "Add garlic and all spices, stir 1 minute until fragrant", "Add tomato paste and stir for 2 minutes to caramelize", "Pour in beef broth, diced tomatoes, and browned chuck — bring to boil", "Reduce to low simmer, cover, and cook 45 minutes", "Add beans, brown sugar, and vinegar — simmer uncovered 15 more minutes until thick", "Taste and adjust salt, pepper, and heat — serve with cheddar, sour cream, and cornbread"], recipeUrl: "", notes: "Two-meat chili with seared chuck cubes and ground beef. Rich, smoky, and hearty. Even better the next day.", rating: 5.0, ratings: { colby: 5, samantha: 5, cade: 5, chandler: 5 }, prepType: "prep" },
+
+            // Mexican (15 recipes)
+            { id: "carne-asada", name: "Carne Asada Tacos", cuisine: "Mexican", prepTime: 35, ingredients: ["2 lbs skirt steak", "2 limes", "1 cup cilantro", "3 onions", "6 cloves garlic", "12 corn tortillas"], steps: ["Marinate steak in lime and cilantro", "Grill steak until charred", "Rest and slice", "Warm tortillas", "Assemble with onions and cilantro"], recipeUrl: "", notes: "Marinated and grilled", rating: 4.7, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 4 }, prepType: "fresh" },
+            { id: "chicken-enchiladas", name: "Chicken Enchiladas", cuisine: "Mexican", prepTime: 40, ingredients: ["2 lbs chicken breast", "2 cups enchilada sauce", "12 flour tortillas", "3 cups cheese", "1 cup sour cream", "3 onions"], steps: ["Cook and shred chicken", "Warm tortillas", "Fill with chicken and cheese", "Roll and place in baking dish", "Cover with sauce and cheese, bake at 350F for 25 minutes"], recipeUrl: "", notes: "Baked to perfection", rating: 4.6, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "fish-tacos", name: "Fish Tacos", cuisine: "Mexican", prepTime: 25, ingredients: ["2 lbs white fish", "4 cups cabbage slaw", "3 limes", "1 cup cilantro", "12 corn tortillas", "1 cup crema"], steps: ["Season and pan-fry fish", "Warm tortillas", "Assemble with slaw and fish", "Top with crema and lime"], recipeUrl: "", notes: "Light and fresh", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 3, chandler: 5 }, prepType: "fresh" },
+            { id: "birria", name: "Birria", cuisine: "Mexican", prepTime: 120, ingredients: ["3 lbs beef short ribs", "4 dried chiles", "4 tomatoes", "1 cup vinegar", "3 tbsp spices", "12 corn tortillas"], steps: ["Toast dried chiles and soften", "Blend with tomatoes and spices", "Add to ribs and slow cook 4 hours", "Shred meat", "Serve in warm tortillas with broth"], recipeUrl: "", notes: "Slow cooked", rating: 4.8, ratings: { colby: 5, samantha: 5, cade: 5, chandler: 5 }, prepType: "prep" },
+            { id: "carnitas", name: "Carnitas Bowl", cuisine: "Mexican", prepTime: 90, ingredients: ["3 lbs pork shoulder", "2 oranges", "3 bay leaves", "3 cups cooked rice", "2 cups cooked beans", "3 avocados"], steps: ["Slow cook pork with orange and bay leaf", "Shred when tender", "Crisp in hot pan", "Serve over rice and beans", "Top with avocado"], recipeUrl: "", notes: "Mexican pulled pork", rating: 4.7, ratings: { colby: 5, samantha: 4, cade: 5, chandler: 5 }, prepType: "prep" },
+            { id: "chiles-rellenos", name: "Chiles Rellenos", cuisine: "Mexican", prepTime: 45, ingredients: ["6 poblano peppers", "2 cups cheese", "4 eggs", "2 cups tomato sauce", "2 onions", "1 cup milk"], steps: ["Roast and peel peppers", "Stuff with cheese", "Make egg batter", "Pan-fry peppers in batter", "Top with tomato sauce"], recipeUrl: "", notes: "Stuffed and sauced", rating: 4.4, ratings: { colby: 4, samantha: 5, cade: 3, chandler: 4 }, prepType: "prep" },
+            { id: "chile-verde", name: "Chile Verde Pork", cuisine: "Mexican", prepTime: 75, ingredients: ["3 lbs pork shoulder", "3 lbs tomatillos", "4 poblano peppers", "1 onion", "4 cloves garlic", "1 cup cilantro"], steps: ["Cube pork and brown", "Roast tomatillos and peppers", "Blend with garlic and cilantro", "Add to pork", "Simmer 1 hour"], recipeUrl: "", notes: "Green sauce perfection", rating: 4.6, ratings: { colby: 5, samantha: 4, cade: 4, chandler: 5 }, prepType: "prep" },
+            { id: "rice-and-beans", name: "Rice and Beans", cuisine: "Mexican", prepTime: 30, ingredients: ["2 cups rice", "2 cups beans", "4 cloves garlic", "1 onion", "3 tbsp olive oil", "1 tsp cumin"], steps: ["Saute garlic and onion", "Add rice and toast", "Add beans and broth", "Simmer until tender", "Fluff with fork"], recipeUrl: "", notes: "Classic side dishes", rating: 4.3, ratings: { colby: 4, samantha: 4, cade: 4, chandler: 4 }, prepType: "fresh" },
+            { id: "huevos-rancheros", name: "Huevos Rancheros", cuisine: "Mexican", prepTime: 25, ingredients: ["4 eggs", "4 corn tortillas", "2 cups refried beans", "1 cup salsa", "1 cup cheese", "1 avocado"], steps: ["Heat tortillas", "Spread beans on tortillas", "Fry eggs", "Place eggs on beans", "Top with salsa and cheese"], recipeUrl: "", notes: "Breakfast favorite", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "wet-burritos", name: "Wet Burritos", cuisine: "Mexican", prepTime: 35, ingredients: ["2 lbs ground beef", "8 flour tortillas", "2 cups cheese", "2 cups salsa", "1 cup sour cream", "3 cups cooked rice"], steps: ["Brown ground beef with spices", "Mix with cooked rice", "Fill tortillas", "Place in baking dish", "Cover with salsa and cheese, bake at 350F"], recipeUrl: "", notes: "Messy but delicious", rating: 4.6, ratings: { colby: 5, samantha: 4, cade: 5, chandler: 5 }, prepType: "fresh" },
+            { id: "chili-lime-chicken", name: "Chili Lime Chicken", cuisine: "Mexican", prepTime: 30, ingredients: ["2 lbs chicken breast", "3 limes", "2 tbsp chili powder", "4 cloves garlic", "3 tbsp olive oil", "1 cup cilantro"], steps: ["Mix lime, chili powder, garlic and oil", "Marinate chicken", "Grill or pan-fry 6-8 minutes per side", "Top with cilantro"], recipeUrl: "", notes: "Tangy and spiced", rating: 4.7, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 4 }, prepType: "prep" },
+            { id: "chicken-tortilla-soup", name: "Chicken Tortilla Soup", cuisine: "Mexican", prepTime: 45, ingredients: ["2 lbs chicken breast", "6 cups chicken broth", "3 tomatoes", "2 onions", "4 cloves garlic", "12 corn tortillas"], steps: ["Simmer chicken in broth", "Add tomato and onion", "Shred chicken", "Fry tortilla strips", "Serve soup topped with tortillas"], recipeUrl: "", notes: "Warming and satisfying", rating: 4.6, ratings: { colby: 5, samantha: 4, cade: 4, chandler: 5 }, prepType: "prep" },
+            { id: "quesadillas", name: "Chicken Quesadillas", cuisine: "Mexican", prepTime: 20, ingredients: ["2 lbs chicken breast", "8 flour tortillas", "3 cups cheese", "2 bell peppers", "1 onion", "1 cup salsa"], steps: ["Cook and shred chicken", "Saute peppers and onion", "Fill tortilla with chicken, vegetables, cheese", "Pan-fry until golden and cheese melts", "Serve with salsa"], recipeUrl: "", notes: "Quick and easy", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 5, chandler: 4 }, prepType: "fresh" },
+            { id: "taco-tuesday", name: "Taco Tuesday", cuisine: "Mexican", prepTime: 25, ingredients: ["2 lbs ground beef", "12 taco shells", "2 cups lettuce", "3 tomatoes", "2 cups cheese", "1 cup sour cream"], steps: ["Brown ground beef with taco seasoning", "Warm taco shells", "Assemble with beef and toppings"], recipeUrl: "", notes: "Family favorite night", rating: 4.4, ratings: { colby: 4, samantha: 4, cade: 5, chandler: 4 }, prepType: "fresh" },
+
+            // Asian (15 recipes)
+            { id: "chicken-teriyaki", name: "Chicken Teriyaki", cuisine: "Asian", prepTime: 30, ingredients: ["2 lbs chicken thighs", "1 cup soy sauce", "1/3 cup mirin", "2 tbsp ginger", "4 cloves garlic", "2 tbsp sesame seeds"], steps: ["Mix soy sauce and mirin", "Cook chicken until done", "Add sauce", "Simmer until sticky", "Top with sesame seeds"], recipeUrl: "", notes: "Glazed and sticky", rating: 4.6, ratings: { colby: 4, samantha: 5, cade: 5, chandler: 5 }, prepType: "fresh" },
+            { id: "beef-stirfry", name: "Beef Stir Fry", cuisine: "Asian", prepTime: 25, ingredients: ["2 lbs flank steak", "4 cups broccoli", "2 bell peppers", "1 cup soy sauce", "3 tbsp ginger", "4 cloves garlic"], steps: ["Heat wok to high heat", "Cook beef in batches", "Add vegetables", "Pour in soy sauce mixture", "Toss and serve with rice"], recipeUrl: "", notes: "Quick and tasty", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 4, chandler: 4 }, prepType: "fresh" },
+            { id: "poke-bowls", name: "Poke Bowls", cuisine: "Asian", prepTime: 20, ingredients: ["2 lbs ahi tuna", "1 cup soy sauce", "3 tbsp sesame oil", "3 cups cooked rice", "2 cucumbers", "3 avocados"], steps: ["Cube tuna and marinate in soy sauce", "Cook rice", "Assemble bowl with rice", "Top with tuna, cucumber, avocado"], recipeUrl: "", notes: "Fresh and light", rating: 4.4, ratings: { colby: 3, samantha: 5, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "pad-thai", name: "Pad Thai", cuisine: "Asian", prepTime: 25, ingredients: ["1 lb rice noodles", "1 lb shrimp", "2 eggs", "3 cups bean sprouts", "1 cup peanuts", "4 limes"], steps: ["Cook noodles and drain", "Stir fry shrimp", "Add noodles and vegetables", "Toss with sauce", "Top with peanuts and lime"], recipeUrl: "", notes: "Sweet and tangy", rating: 4.7, ratings: { colby: 5, samantha: 4, cade: 5, chandler: 5 }, prepType: "fresh" },
+            { id: "orange-chicken", name: "Orange Chicken", cuisine: "Asian", prepTime: 35, ingredients: ["2 lbs chicken", "2 cups orange juice", "1 cup soy sauce", "4 cloves garlic", "2 tbsp ginger", "3 cups cooked rice"], steps: ["Cut chicken into pieces", "Brown in pan", "Add orange juice and soy sauce", "Simmer until thick and sticky", "Serve over rice"], recipeUrl: "", notes: "Sweet and savory", rating: 4.6, ratings: { colby: 4, samantha: 5, cade: 5, chandler: 5 }, prepType: "fresh" },
+            { id: "fried-rice", name: "Fried Rice", cuisine: "Asian", prepTime: 20, ingredients: ["3 cups cooked rice", "2 eggs", "1 cup peas", "1 cup carrots", "1/2 cup soy sauce", "2 tbsp sesame oil"], steps: ["Heat wok with oil", "Scramble eggs", "Add rice and break up clumps", "Stir in vegetables", "Season with soy sauce"], recipeUrl: "", notes: "Great for leftovers", rating: 4.3, ratings: { colby: 4, samantha: 4, cade: 5, chandler: 4 }, prepType: "fresh" },
+            { id: "general-tso-chicken", name: "General Tso Chicken", cuisine: "Asian", prepTime: 40, ingredients: ["2 lbs chicken breast", "1 cup soy sauce", "1/2 cup vinegar", "1/3 cup sugar", "4 cloves garlic", "1 tbsp red pepper flakes"], steps: ["Cube chicken and brown", "Make sauce with soy, vinegar, sugar", "Add to chicken", "Simmer until glazed", "Serve with rice"], recipeUrl: "", notes: "Spicy and delicious", rating: 4.6, ratings: { colby: 5, samantha: 4, cade: 5, chandler: 4 }, prepType: "fresh" },
+            { id: "mongolian-beef", name: "Mongolian Beef", cuisine: "Asian", prepTime: 30, ingredients: ["2 lbs beef flank", "1 cup soy sauce", "1/2 cup brown sugar", "3 tbsp ginger", "4 cloves garlic", "2 scallions"], steps: ["Slice beef thin", "Brown in hot wok", "Add sauce ingredients", "Simmer until thick", "Garnish with scallions"], recipeUrl: "", notes: "Sweet and savory beef", rating: 4.7, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 4 }, prepType: "fresh" },
+            { id: "miso-soup", name: "Miso Soup", cuisine: "Asian", prepTime: 20, ingredients: ["4 cups dashi broth", "3 tbsp miso paste", "1 block tofu", "1 cup seaweed", "3 scallions"], steps: ["Heat broth", "Dissolve miso in small amount of broth", "Add to pot", "Add tofu and seaweed", "Simmer gently and serve"], recipeUrl: "", notes: "Simple and warming", rating: 4.4, ratings: { colby: 4, samantha: 4, cade: 4, chandler: 4 }, prepType: "prep" },
+            { id: "shrimp-tempura", name: "Shrimp Tempura", cuisine: "Asian", prepTime: 35, ingredients: ["1.5 lbs shrimp", "1 cup tempura flour", "1 egg", "1 cup water", "Oil for frying", "Dipping sauce"], steps: ["Mix tempura batter", "Dip shrimp in batter", "Deep fry until golden", "Drain on paper towels", "Serve with dipping sauce"], recipeUrl: "", notes: "Crispy and light", rating: 4.6, ratings: { colby: 5, samantha: 4, cade: 5, chandler: 5 }, prepType: "fresh" },
+            { id: "ramen-noodles", name: "Ramen Noodles", cuisine: "Asian", prepTime: 45, ingredients: ["1 lb ramen noodles", "6 cups chicken broth", "2 cups cooked chicken", "4 eggs", "2 cups vegetables"], steps: ["Make or heat broth", "Cook noodles separately", "Assemble in bowls", "Add toppings", "Pour hot broth over"], recipeUrl: "", notes: "Comforting noodle soup", rating: 4.7, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 5 }, prepType: "prep" },
+            { id: "sweet-sour-pork", name: "Sweet and Sour Pork", cuisine: "Asian", prepTime: 35, ingredients: ["2 lbs pork tenderloin", "1 cup pineapple chunks", "2 bell peppers", "1 cup vinegar", "1/2 cup sugar", "2 cups cooked rice"], steps: ["Cube pork and brown", "Add pineapple and peppers", "Mix vinegar and sugar sauce", "Add to pan", "Simmer and serve over rice"], recipeUrl: "", notes: "Sweet tangy favorite", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "kung-pao-chicken", name: "Kung Pao Chicken", cuisine: "Asian", prepTime: 30, ingredients: ["2 lbs chicken breast", "1 cup peanuts", "4 dried chiles", "1/2 cup soy sauce", "3 tbsp vinegar", "4 cloves garlic"], steps: ["Cube chicken and brown", "Add garlic and chiles", "Stir in sauce", "Add peanuts", "Serve with rice"], recipeUrl: "", notes: "Spicy nutty delicious", rating: 4.6, ratings: { colby: 5, samantha: 4, cade: 5, chandler: 5 }, prepType: "fresh" },
+            { id: "sesame-chicken", name: "Sesame Chicken", cuisine: "Asian", prepTime: 35, ingredients: ["2 lbs chicken breast", "1 cup soy sauce", "1/3 cup sesame oil", "3 tbsp ginger", "4 cloves garlic", "3 tbsp sesame seeds"], steps: ["Brown chicken pieces", "Make sauce with soy and sesame oil", "Add to chicken", "Simmer until glazed", "Top with sesame seeds"], recipeUrl: "", notes: "Nutty and aromatic", rating: 4.7, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 4 }, prepType: "fresh" },
+
+            // Mediterranean (15 recipes)
+            { id: "grilled-salmon", name: "Grilled Salmon", cuisine: "Mediterranean", prepTime: 25, ingredients: ["4 salmon fillets", "2 lemons", "2 tbsp fresh dill", "1/4 cup olive oil", "4 cloves garlic", "1 tsp sea salt"], steps: ["Preheat grill", "Mix oil with garlic and dill", "Brush on salmon", "Grill 5-6 minutes per side", "Finish with lemon juice"], recipeUrl: "", notes: "Healthy and delicious", rating: 4.7, ratings: { colby: 5, samantha: 5, cade: 3, chandler: 5 }, prepType: "fresh" },
+            { id: "greek-salad", name: "Greek Salad with Chicken", cuisine: "Mediterranean", prepTime: 20, ingredients: ["2 lbs chicken breast", "6 cups romaine lettuce", "4 tomatoes", "2 cucumbers", "2 cups feta cheese", "1 cup olives"], steps: ["Grill or pan-fry chicken", "Chop lettuce and vegetables", "Combine in large bowl", "Top with feta and olives", "Dress with olive oil and lemon"], recipeUrl: "", notes: "Light lunch or dinner", rating: 4.4, ratings: { colby: 4, samantha: 4, cade: 3, chandler: 5 }, prepType: "fresh" },
+            { id: "lamb-kebabs", name: "Lamb Kebabs", cuisine: "Mediterranean", prepTime: 30, ingredients: ["2 lbs lamb", "3 bell peppers", "2 onions", "1/4 cup olive oil", "2 tbsp Mediterranean herbs", "8 pita breads"], steps: ["Cube lamb and vegetables", "Skewer alternating pieces", "Brush with oil and herbs", "Grill until cooked", "Serve with pita and sauce"], recipeUrl: "", notes: "Grilled perfection", rating: 4.8, ratings: { colby: 5, samantha: 5, cade: 5, chandler: 4 }, prepType: "fresh" },
+            { id: "shrimp-scampi", name: "Shrimp Scampi", cuisine: "Mediterranean", prepTime: 20, ingredients: ["2 lbs shrimp", "4 cloves garlic", "3 lemons", "1 cup white wine", "4 tbsp butter", "1 lb pasta"], steps: ["Cook pasta and drain", "Melt butter in pan", "Add garlic and shrimp", "Pour in wine and lemon juice", "Combine with pasta"], recipeUrl: "", notes: "Light and garlicky", rating: 4.6, ratings: { colby: 5, samantha: 4, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "moussaka", name: "Moussaka", cuisine: "Mediterranean", prepTime: 75, ingredients: ["2 eggplants", "2 lbs ground lamb", "2 cups tomato sauce", "3 cups bechamel", "2 cups cheese"], steps: ["Slice and roast eggplant", "Brown lamb and mix with tomato sauce", "Layer eggplant, meat sauce, bechamel", "Top with cheese", "Bake at 350F for 45 minutes"], recipeUrl: "", notes: "Layered Mediterranean dish", rating: 4.5, ratings: { colby: 5, samantha: 4, cade: 3, chandler: 4 }, prepType: "prep" },
+            { id: "paella", name: "Paella", cuisine: "Mediterranean", prepTime: 45, ingredients: ["3 cups rice", "1 tsp saffron", "2 lbs chicken", "1 lb seafood", "2 bell peppers", "1 cup peas"], steps: ["Toast rice in oil", "Add chicken and brown", "Pour in broth with saffron", "Add vegetables and seafood", "Simmer until rice is tender"], recipeUrl: "", notes: "Spanish classic", rating: 4.7, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 5 }, prepType: "prep" },
+            { id: "falafel-wrap", name: "Falafel Wraps", cuisine: "Mediterranean", prepTime: 30, ingredients: ["2 cups chickpeas", "1 cup flour", "4 cloves garlic", "1 tbsp cumin", "Oil for frying", "6 pita breads"], steps: ["Make falafel mixture", "Form into balls", "Deep fry until golden", "Warm pita breads", "Assemble with tahini sauce and vegetables"], recipeUrl: "", notes: "Vegetarian favorite", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 4, chandler: 4 }, prepType: "fresh" },
+            { id: "caprese-salad", name: "Caprese Salad", cuisine: "Mediterranean", prepTime: 15, ingredients: ["4 large tomatoes", "1 lb fresh mozzarella", "1 cup fresh basil", "1/4 cup olive oil", "2 tbsp balsamic vinegar", "Salt and pepper"], steps: ["Slice tomatoes and mozzarella", "Arrange on plate", "Top with basil", "Drizzle with oil and vinegar"], recipeUrl: "", notes: "Fresh and simple", rating: 4.6, ratings: { colby: 5, samantha: 5, cade: 3, chandler: 4 }, prepType: "fresh" },
+            { id: "olive-bread", name: "Mediterranean Bread Bowl", cuisine: "Mediterranean", prepTime: 20, ingredients: ["1 crusty bread loaf", "1 cup hummus", "2 cups vegetables", "1 cup olives", "1 cup feta cheese"], steps: ["Hollow out bread", "Fill with hummus", "Add vegetables, olives, cheese"], recipeUrl: "", notes: "Perfect for lunch", rating: 4.4, ratings: { colby: 4, samantha: 4, cade: 3, chandler: 4 }, prepType: "fresh" },
+            { id: "tabbouleh", name: "Tabbouleh Salad", cuisine: "Mediterranean", prepTime: 25, ingredients: ["2 cups bulgur wheat", "4 tomatoes", "1 cucumber", "1 cup fresh parsley", "1/4 cup lemon juice", "1/4 cup olive oil"], steps: ["Soak bulgur", "Chop vegetables and herbs", "Mix all ingredients", "Refrigerate until ready to serve"], recipeUrl: "", notes: "Fresh and herb-forward", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 4, chandler: 4 }, prepType: "fresh" },
+            { id: "mezze-platter", name: "Mezze Platter", cuisine: "Mediterranean", prepTime: 30, ingredients: ["1 cup hummus", "1 cup baba ganoush", "1 cup tzatziki", "2 cups olives", "1 cup cheese", "Pita bread"], steps: ["Arrange dips in center", "Surround with vegetables and cheese", "Add olives", "Serve with warm pita"], recipeUrl: "", notes: "Great for sharing", rating: 4.7, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "stuffed-peppers", name: "Stuffed Bell Peppers", cuisine: "Mediterranean", prepTime: 45, ingredients: ["6 bell peppers", "2 cups cooked rice", "1 lb ground lamb", "1 onion", "2 cups tomato sauce"], steps: ["Hollow out peppers", "Brown lamb with onion", "Mix with rice", "Stuff peppers", "Bake at 350F with tomato sauce"], recipeUrl: "", notes: "Hearty and flavorful", rating: 4.6, ratings: { colby: 5, samantha: 4, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "white-fish-bake", name: "White Fish Bake", cuisine: "Mediterranean", prepTime: 30, ingredients: ["2 lbs white fish", "3 tomatoes", "1 onion", "1/4 cup olive oil", "2 tbsp oregano", "1 lemon"], steps: ["Place fish in baking dish", "Top with tomatoes and onion", "Drizzle with oil and herbs", "Bake at 400F for 20 minutes"], recipeUrl: "", notes: "Simple and healthy", rating: 4.5, ratings: { colby: 5, samantha: 4, cade: 4, chandler: 4 }, prepType: "fresh" },
+            { id: "minestrone", name: "Minestrone Soup", cuisine: "Mediterranean", prepTime: 45, ingredients: ["6 cups vegetable broth", "2 cups vegetables", "1 can cannellini beans", "1 cup pasta", "3 tbsp pesto", "Parmesan cheese"], steps: ["Heat broth", "Add vegetables", "Simmer 20 minutes", "Add beans and pasta", "Finish with pesto"], recipeUrl: "", notes: "Hearty vegetable soup", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 4, chandler: 4 }, prepType: "prep" },
+            { id: "lentil-salad", name: "Mediterranean Lentil Salad", cuisine: "Mediterranean", prepTime: 35, ingredients: ["2 cups cooked lentils", "1 cucumber", "2 tomatoes", "1 red onion", "1/4 cup olive oil", "2 tbsp lemon juice"], steps: ["Cool cooked lentils", "Dice vegetables", "Combine all ingredients", "Dress with oil and lemon"], recipeUrl: "", notes: "Vegetarian and hearty", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 3, chandler: 4 }, prepType: "fresh" },
+
+            // Indian (15 recipes)
+            { id: "butter-chicken", name: "Butter Chicken", cuisine: "Indian", prepTime: 50, ingredients: ["3 lbs boneless skinless chicken thighs, cut into 1.5 inch pieces", "1.5 cups plain whole-milk yogurt", "2 tbsp garam masala", "1 tbsp turmeric", "1 tbsp cumin", "1 tbsp smoked paprika", "2 tsp chili powder", "6 cloves garlic, minced", "2 tbsp fresh ginger, grated", "4 tbsp butter", "1 large yellow onion, finely diced", "1 28-oz can crushed tomatoes", "1.5 cups heavy cream", "2 tbsp dried fenugreek leaves (kasuri methi)", "1.5 tsp salt", "1 tsp sugar", "3 cups basmati rice", "Fresh cilantro for garnish", "Naan bread for serving"], steps: ["Marinate chicken in yogurt, garam masala, turmeric, cumin, paprika, chili powder, half the garlic, and half the ginger for at least 30 min (or overnight)", "Melt 2 tbsp butter in a large skillet over medium-high heat, sear chicken pieces 3-4 min per side until golden, set aside", "In the same pan, melt remaining 2 tbsp butter, saute onion until soft (5 min), add remaining garlic and ginger, cook 1 min", "Add crushed tomatoes, bring to simmer, cook 10 minutes until sauce thickens", "Stir in heavy cream, fenugreek, salt, and sugar, simmer 5 min", "Add seared chicken back to sauce, simmer on low 15 min until chicken is cooked through and sauce is rich", "Serve over basmati rice, garnish with cilantro, with warm naan on the side"], recipeUrl: "", notes: "Rich, creamy, restaurant-quality butter chicken. Marinate overnight for best results.", rating: 4.8, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "tikka-masala", name: "Tikka Masala", cuisine: "Indian", prepTime: 45, ingredients: ["2 lbs chicken", "1 cup yogurt", "3 tbsp garam masala", "3 tomatoes", "1 cup cream", "3 cups cooked rice"], steps: ["Marinate chicken in yogurt and spices", "Grill or pan-fry chicken", "Make tomato cream sauce", "Add chicken to sauce", "Simmer and serve over rice"], recipeUrl: "", notes: "Spiced and creamy", rating: 4.7, ratings: { colby: 5, samantha: 4, cade: 5, chandler: 4 }, prepType: "fresh" },
+            { id: "palak-paneer", name: "Palak Paneer", cuisine: "Indian", prepTime: 35, ingredients: ["1 lb paneer cheese", "2 lbs fresh spinach", "2 onions", "4 cloves garlic", "2 tbsp ginger", "1 cup cream"], steps: ["Saute garlic and onion", "Add spinach and cook down", "Blend into sauce", "Add cream", "Add cubed paneer and simmer"], recipeUrl: "", notes: "Vegetarian favorite", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 4, chandler: 4 }, prepType: "fresh" },
+            { id: "tandoori-chicken", name: "Tandoori Chicken", cuisine: "Indian", prepTime: 40, ingredients: ["3 lbs chicken", "1 cup yogurt", "3 tbsp tandoori spice", "2 lemons", "2 tbsp ginger", "4 cloves garlic"], steps: ["Mix yogurt with spices", "Marinate chicken", "Grill or bake at 425F", "Cook until done", "Serve with lemon and cilantro"], recipeUrl: "", notes: "Aromatic and smoky", rating: 4.6, ratings: { colby: 5, samantha: 4, cade: 5, chandler: 4 }, prepType: "fresh" },
+            { id: "dal-makhani", name: "Dal Makhani", cuisine: "Indian", prepTime: 50, ingredients: ["1 cup black lentils", "1/2 cup red lentils", "1 cup heavy cream", "4 tbsp butter", "3 tomatoes", "2 tbsp garam masala"], steps: ["Soak black lentils overnight", "Cook both lentils until tender", "Make tomato base", "Add cream and butter", "Simmer and season"], recipeUrl: "", notes: "Rich and hearty", rating: 4.4, ratings: { colby: 4, samantha: 5, cade: 3, chandler: 4 }, prepType: "prep" },
+            { id: "chana-masala", name: "Chana Masala", cuisine: "Indian", prepTime: 35, ingredients: ["3 cans chickpeas", "3 onions", "4 tomatoes", "3 tbsp garam masala", "3 tbsp ginger", "6 cloves garlic"], steps: ["Saute onions and garlic", "Add tomatoes and spices", "Add chickpeas", "Simmer 20 minutes", "Serve with rice or bread"], recipeUrl: "", notes: "Vegetarian and spiced", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 4, chandler: 4 }, prepType: "prep" },
+            { id: "samosa", name: "Samosas", cuisine: "Indian", prepTime: 45, ingredients: ["2 cups flour", "2 potatoes", "1 cup peas", "1 onion", "3 tbsp spices", "Oil for frying"], steps: ["Make pastry dough", "Cook and spice potato filling", "Form pastry triangles", "Fill and seal", "Deep fry until golden"], recipeUrl: "", notes: "Crispy potato pockets", rating: 4.6, ratings: { colby: 5, samantha: 4, cade: 5, chandler: 4 }, prepType: "fresh" },
+            { id: "biryani", name: "Chicken Biryani", cuisine: "Indian", prepTime: 60, ingredients: ["2 lbs chicken", "2 cups basmati rice", "2 onions", "1/4 cup yogurt", "1/4 cup ghee", "3 tbsp garam masala"], steps: ["Cook rice until half done", "Layer rice and marinated chicken", "Layer onions and ghee", "Simmer covered", "Fluff and serve"], recipeUrl: "", notes: "Fragrant rice dish", rating: 4.7, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 5 }, prepType: "prep" },
+            { id: "chole-bhature", name: "Chole Bhature", cuisine: "Indian", prepTime: 75, ingredients: ["2 cups chickpeas", "2 cups flour", "1 onion", "2 tbsp ginger", "4 cloves garlic", "Oil for frying"], steps: ["Soak and cook chickpeas", "Make spiced gravy", "Make dough for bhature", "Deep fry until puffed", "Serve together"], recipeUrl: "", notes: "Indulgent comfort food", rating: 4.6, ratings: { colby: 5, samantha: 4, cade: 4, chandler: 4 }, prepType: "prep" },
+            { id: "rogan-josh", name: "Rogan Josh", cuisine: "Indian", prepTime: 50, ingredients: ["2 lbs lamb", "1 cup yogurt", "3 onions", "4 tomatoes", "3 tbsp garam masala", "2 tbsp ginger"], steps: ["Brown lamb", "Add yogurt and spices", "Add tomatoes and onions", "Simmer 45 minutes until tender"], recipeUrl: "", notes: "Aromatic lamb curry", rating: 4.7, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 4 }, prepType: "prep" },
+            { id: "malai-kofta", name: "Malai Kofta", cuisine: "Indian", prepTime: 45, ingredients: ["2 cups paneer cheese", "1 cup potato", "1/2 cup dry fruits", "2 onions", "3 tbsp cream", "Oil for frying"], steps: ["Mix paneer with spices", "Form into balls", "Deep fry", "Make tomato cream sauce", "Add kofta and simmer"], recipeUrl: "", notes: "Creamy vegetarian", rating: 4.6, ratings: { colby: 4, samantha: 5, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "idli-sambar", name: "Idli with Sambar", cuisine: "Indian", prepTime: 30, ingredients: ["3 cups rice", "1 cup urad dal", "2 cups lentils", "3 onions", "2 tbsp sambar powder", "Vegetables"], steps: ["Soak and blend rice and dal", "Ferment overnight", "Steam in idli molds", "Make sambar with lentils and vegetables", "Serve together"], recipeUrl: "", notes: "South Indian classic", rating: 4.5, ratings: { colby: 4, samantha: 4, cade: 4, chandler: 4 }, prepType: "fresh" },
+            { id: "dosa", name: "Masala Dosa", cuisine: "Indian", prepTime: 40, ingredients: ["3 cups rice", "1 cup urad dal", "3 potatoes", "2 onions", "1 tbsp mustard seeds", "Ghee"], steps: ["Soak and blend rice and dal", "Ferment overnight", "Spread on griddle", "Cook until crispy", "Fill with spiced potatoes"], recipeUrl: "", notes: "Crispy crepe treat", rating: 4.7, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 5 }, prepType: "fresh" },
+            { id: "naan-bread", name: "Garlic Naan", cuisine: "Indian", prepTime: 35, ingredients: ["3 cups flour", "1 cup yogurt", "3 tbsp ghee", "6 cloves garlic", "1 tsp salt", "1 tsp sugar"], steps: ["Make dough with flour and yogurt", "Knead and rest", "Roll out pieces", "Cook on hot skillet", "Brush with garlic ghee"], recipeUrl: "", notes: "Soft and pillowy", rating: 4.6, ratings: { colby: 5, samantha: 5, cade: 4, chandler: 4 }, prepType: "fresh" },
+            { id: "mango-lassi", name: "Mango Lassi", cuisine: "Indian", prepTime: 10, ingredients: ["2 cups yogurt", "1 mango", "1/4 cup sugar", "1 cup milk", "1/2 tsp cardamom", "Ice"], steps: ["Blend mango with yogurt", "Add sugar and milk", "Blend until smooth", "Serve chilled"], recipeUrl: "", notes: "Refreshing drink", rating: 4.5, ratings: { colby: 4, samantha: 5, cade: 5, chandler: 4 }, prepType: "fresh" },
+
+            // === COLBY CUSTOM RECIPES (6 servings = 4 people x 1.5) ===
+            { id: "colby-garlic-chicken", name: "Grilled Chicken with Garlic Butter Sauce", cuisine: "American", prepTime: 35, ingredients: ["3 lbs boneless skinless chicken breasts (about 6 pieces)", "2 tsp salt", "1 tsp black pepper", "1 tsp garlic powder", "1 tbsp olive oil", "6 tbsp butter", "8 cloves garlic, minced", "2 tbsp soy sauce", "1 tbsp lemon juice", "2 tbsp fresh parsley, chopped", "3 cups white rice", "1.5 lbs green beans or asparagus (side)"], steps: ["Season chicken breasts with salt, pepper, and garlic powder on both sides", "Grill chicken over medium-high heat 6-7 min per side until internal temp hits 165F, set aside to rest", "While chicken rests, melt butter in a skillet over medium heat, add minced garlic and cook 1-2 min until fragrant (do not burn)", "Add soy sauce and lemon juice to the butter, stir and simmer 1 min", "Slice chicken and drizzle garlic butter sauce generously over top, garnish with parsley", "Serve with steamed rice and grilled or roasted green beans"], recipeUrl: "", notes: "Simple, rich garlic butter sauce. The soy sauce adds depth without tasting Asian.", rating: 0, ratings: { }, prepType: "fresh" },
+            { id: "colby-turkey-meatloaf", name: "Turkey Meatloaf", cuisine: "American", prepTime: 65, ingredients: ["3 lbs ground turkey", "1.5 cups panko breadcrumbs", "2 large eggs", "1 large yellow onion, finely diced", "4 cloves garlic, minced", "1/3 cup whole milk", "2 tbsp Worcestershire sauce", "1 tbsp Dijon mustard", "1.5 tsp salt", "1 tsp black pepper", "1 tsp dried thyme", "1/2 cup ketchup", "2 tbsp brown sugar", "1 tbsp apple cider vinegar", "2 lbs Yukon Gold potatoes (for mashed potatoes)", "4 tbsp butter", "1/2 cup heavy cream"], steps: ["Preheat oven to 375F. Mix ground turkey, panko, eggs, onion, garlic, milk, Worcestershire, Dijon, salt, pepper, and thyme in a large bowl. Do not overmix.", "Shape into a loaf on a foil-lined sheet pan (or press into a loaf pan). Make it slightly taller in the center.", "Mix ketchup, brown sugar, and apple cider vinegar for the glaze. Spread half on top of the meatloaf.", "Bake 40 min, then spread remaining glaze on top and bake another 15-20 min until internal temp hits 165F", "Let rest 10 min before slicing (this is critical - it will fall apart if you cut too early)", "Serve thick slices with mashed potatoes and a green vegetable"], recipeUrl: "", notes: "Leaner than beef meatloaf but just as flavorful. The glaze is key.", rating: 0, ratings: { }, prepType: "prep" },
+            { id: "colby-turkey-chili", name: "Turkey Chili", cuisine: "American", prepTime: 50, ingredients: ["3 lbs ground turkey", "2 tbsp olive oil", "1 large yellow onion, diced", "1 large green bell pepper, diced", "1 large red bell pepper, diced", "6 cloves garlic, minced", "3 tbsp chili powder", "2 tsp cumin", "1 tsp smoked paprika", "1/2 tsp cayenne pepper", "1 28-oz can crushed tomatoes", "1 15-oz can diced tomatoes", "2 15-oz cans kidney beans, drained and rinsed", "1 15-oz can black beans, drained and rinsed", "1.5 cups chicken broth", "2 tsp salt", "1 tsp black pepper", "Sour cream for topping", "Shredded cheddar cheese for topping", "Diced avocado for topping", "Tortilla chips for serving"], steps: ["Heat olive oil in a large Dutch oven or heavy pot over medium-high heat. Brown the ground turkey, breaking it up, until no longer pink (8-10 min). Drain any excess liquid.", "Add onion and bell peppers, cook 5 min until softened. Add garlic, cook 1 min.", "Add chili powder, cumin, smoked paprika, and cayenne. Stir to coat everything, cook 1 min until fragrant.", "Add crushed tomatoes, diced tomatoes, all beans, and chicken broth. Stir well.", "Bring to a boil, then reduce to low simmer. Cover and cook 30 min, stirring occasionally. Taste and adjust salt.", "Serve in bowls topped with sour cream, shredded cheddar, diced avocado, and tortilla chips on the side"], recipeUrl: "", notes: "Hearty, healthy chili. Even better the next day. Freezes great.", rating: 0, ratings: { }, prepType: "prep" },
+            { id: "colby-chicken-potpie-soup", name: "Chicken Pot Pie Soup", cuisine: "American", prepTime: 45, ingredients: ["2.5 lbs boneless skinless chicken thighs", "6 tbsp butter", "1 large yellow onion, diced", "4 stalks celery, diced", "4 large carrots, peeled and diced", "4 cloves garlic, minced", "1/3 cup all-purpose flour", "5 cups chicken broth", "1.5 cups heavy cream", "1 cup frozen peas", "1.5 tsp salt", "1 tsp black pepper", "1 tsp dried thyme", "1/2 tsp dried sage", "1 sheet frozen puff pastry (for topping)", "1 egg, beaten (for egg wash)"], steps: ["Season chicken thighs with salt and pepper. In a large Dutch oven, sear in 2 tbsp butter over medium-high, 4 min per side. Remove and dice into bite-sized pieces.", "In the same pot, melt remaining 4 tbsp butter. Add onion, celery, and carrots. Cook 6-7 min until softened.", "Add garlic, cook 1 min. Sprinkle flour over vegetables, stir constantly for 2 min to make a roux.", "Slowly pour in chicken broth while stirring. Bring to a simmer, cook 10 min until thickened.", "Add cream, peas, diced chicken, thyme, and sage. Simmer 10 more min. Taste for seasoning.", "Cut puff pastry into squares or circles, brush with egg wash, bake at 400F for 12-15 min until golden. Float a puff pastry piece on top of each bowl when serving."], recipeUrl: "", notes: "All the comfort of pot pie without making a crust. The puff pastry toppers are the move.", rating: 0, ratings: { }, prepType: "prep" },
+            { id: "colby-grilled-ny-strip", name: "Grilled NY Strip Steak", cuisine: "American", prepTime: 30, ingredients: ["4 NY strip steaks, 1.25 inches thick (about 14 oz each)", "2 tbsp kosher salt", "2 tsp coarse black pepper", "2 tsp garlic powder", "1 tsp onion powder", "4 tbsp butter", "4 sprigs fresh rosemary", "6 cloves garlic, smashed", "2 lbs baby potatoes, halved", "3 tbsp olive oil", "1 lb asparagus, trimmed", "Flaky sea salt for finishing"], steps: ["Remove steaks from fridge 45 min before cooking. Season generously on all sides with kosher salt, pepper, garlic powder, and onion powder.", "Toss halved baby potatoes with 2 tbsp olive oil and salt. Roast at 425F for 25 min until crispy.", "Heat grill to high (500F+). Grill steaks 4-5 min per side for medium-rare (130F internal). In the last minute, add butter, rosemary, and smashed garlic to a small pan on the grill, baste steaks.", "Remove steaks to a cutting board, tent with foil, rest 8-10 min. The temp will rise to 135F.", "While steaks rest, toss asparagus with remaining olive oil and salt, grill 3-4 min turning once.", "Slice steaks against the grain, drizzle with the rosemary garlic butter. Serve with roasted potatoes and grilled asparagus. Finish with flaky sea salt."], recipeUrl: "", notes: "The 45-min room temp rest and the post-grill rest are non-negotiable. This is how steakhouses do it.", rating: 0, ratings: { }, prepType: "fresh" },
+            { id: "colby-grilled-salmon", name: "Grilled Salmon", cuisine: "Mediterranean", prepTime: 25, ingredients: ["6 salmon fillets, skin-on (6-8 oz each)", "3 tbsp olive oil", "2 tsp kosher salt", "1 tsp black pepper", "1 tsp smoked paprika", "1 tsp garlic powder", "2 lemons (1 sliced, 1 for juice)", "3 tbsp butter, melted", "2 tbsp fresh dill, chopped", "2 tbsp capers", "3 cups couscous or quinoa", "1.5 lbs broccolini or asparagus", "2 tbsp olive oil (for vegetables)"], steps: ["Remove salmon from fridge 20 min before cooking. Pat dry with paper towels (critical for crispy skin). Season flesh side with salt, pepper, smoked paprika, and garlic powder.", "Oil the grill grates well and heat to medium-high (400F). Place salmon skin-side down, close lid, cook 5-6 min.", "Carefully flip, cook flesh-side down 2-3 min until internal temp hits 125-130F for medium (salmon will continue cooking off the grill).", "While salmon grills, mix melted butter with lemon juice, dill, and capers for the sauce.", "Grill broccolini tossed in olive oil and salt alongside the salmon, 3-4 min.", "Serve salmon over couscous or quinoa, spoon lemon-dill-caper butter sauce over the top, with grilled broccolini on the side and lemon slices for squeezing."], recipeUrl: "", notes: "Pat the salmon DRY before grilling. Wet fish sticks to the grate. Skin side down first, always.", rating: 0, ratings: { }, prepType: "fresh" }
+        ];
+
+        const FAMILY_MEMBERS = [
+            { id: "colby", name: "Colby", role: "Dad", avatar: "C", color: "#E8A89F" },
+            { id: "samantha", name: "Samantha", role: "Mom", avatar: "S", color: "#D97757" },
+            { id: "cade", name: "Cade", role: "Son", avatar: "C", color: "#A8D4BA" },
+            { id: "chandler", name: "Chandler", role: "Daughter", avatar: "Ch", color: "#6B9E7F" },
+            { id: "josie", name: "Josie", role: "Daughter (College)", avatar: "J", color: "#F0B89B", visiting: false },
+            { id: "kaya", name: "Kaya", role: "Daughter (College)", avatar: "K", color: "#D4AF7A", visiting: false }
+        ];
+
+        const INGREDIENT_CATEGORIES = {
+            "Produce": ["lettuce", "tomato", "cucumber", "onion", "garlic", "ginger", "pepper", "bell pepper", "jalapeño", "serrano", "broccoli", "carrot", "spinach", "kale", "celery", "potato", "sweet potato", "avocado", "lime", "lemon", "cilantro", "parsley", "basil", "thyme", "rosemary", "oregano", "scallion", "green onion", "corn", "zucchini", "squash", "mushroom", "cabbage", "bean sprout", "pea", "green bean", "asparagus", "arugula", "radish", "beet", "turnip", "eggplant", "cauliflower", "artichoke", "fennel", "bok choy", "watercress", "mint", "dill", "chive", "shallot", "leek"],
+            "Meat & Seafood": ["chicken", "beef", "pork", "shrimp", "fish", "salmon", "turkey", "lamb", "steak", "sausage", "bacon", "ground beef", "ground turkey", "ground pork", "meatball", "strip steak", "ny strip", "ribeye", "filet", "tenderloin", "thigh", "breast", "drumstick", "wing", "crab", "lobster", "tuna", "cod", "tilapia", "mahi", "scallop", "mussel", "clam"],
+            "Dairy & Eggs": ["cheese", "butter", "milk", "cream", "yogurt", "feta", "mozzarella", "parmesan", "cheddar", "sour cream", "cream cheese", "egg", "heavy cream", "half and half", "ricotta", "gouda", "gruyere", "brie", "cottage cheese", "whipped cream", "ghee"],
+            "Bread & Bakery": ["bread", "tortilla", "pita", "naan", "bun", "roll", "baguette", "croissant", "english muffin", "flatbread", "crouton", "breadcrumb", "panko", "biscuit"],
+            "Pantry & Dry Goods": ["rice", "pasta", "olive oil", "soy sauce", "flour", "sugar", "brown sugar", "honey", "maple syrup", "vinegar", "balsamic", "sesame oil", "vegetable oil", "canola oil", "coconut oil", "cornstarch", "baking powder", "baking soda", "vanilla", "cocoa", "chocolate", "peanut butter", "almond butter", "jam", "jelly", "ketchup", "mustard", "mayonnaise", "hot sauce", "sriracha", "worcestershire", "fish sauce", "oyster sauce", "hoisin", "teriyaki", "tomato sauce", "tomato paste", "crushed tomato", "diced tomato", "canned tomato", "broth", "stock", "chicken broth", "beef broth", "vegetable broth", "coconut milk", "beans", "black beans", "kidney beans", "chickpea", "lentil", "quinoa", "couscous", "oat", "cereal", "granola", "nut", "almond", "walnut", "pecan", "cashew", "peanut", "pine nut", "sesame seed", "cumin", "paprika", "chili powder", "cayenne", "turmeric", "cinnamon", "nutmeg", "coriander", "garam masala", "curry powder", "italian seasoning", "bay leaf", "red pepper flake", "salt", "pepper", "black pepper", "garlic powder", "onion powder", "dried oregano", "dried basil", "dried thyme"],
+            "Frozen": ["frozen vegetable", "frozen fruit", "frozen shrimp", "frozen pizza", "ice cream", "frozen peas", "frozen corn", "frozen spinach", "frozen berries"],
+            "Beverages": ["water", "juice", "soda", "coffee", "tea", "wine", "beer", "milk"]
+        };
+
+        const STORES = ["Whole Foods", "Ralphs", "Costco", "Trader Joes", "Bobs Market", "Northgate Market"];
+
+        // Utility: Parse ingredient string into quantity, unit, item name
+        const parseIngredient = (str) => {
+            // Attempt to extract quantity and unit
+            const quantityMatch = str.match(/^([\d\s/.-]*)\s*(lbs?|oz|cups?|tbsp|tsp|cloves?|cans?|bunch|head|pints?|quarts?|liter|g|kg)?/i);
+            if (!quantityMatch) {
+                return { quantity: null, unit: null, item: str.trim() };
+            }
+            const quantityStr = quantityMatch[1]?.trim() || "";
+            const unit = quantityMatch[2]?.toLowerCase().replace(/s$/, '') || null; // normalize plurals
+            const itemName = str.substring(quantityMatch[0].length).trim();
+
+            // Try to parse quantity as number or fraction
+            let qty = null;
+            if (quantityStr) {
+                if (quantityStr.includes('/')) {
+                    const parts = quantityStr.split('/');
+                    qty = parseFloat(parts[0]) / parseFloat(parts[1]);
+                } else {
+                    qty = parseFloat(quantityStr);
+                }
+            }
+
+            return { quantity: qty, unit, item: itemName || str.trim() };
+        };
+
+        // Utility: Consolidate shopping list ingredients
+        const consolidateIngredients = (mealsInWeek, allMeals) => {
+            const consolidated = {};
+            mealsInWeek.forEach(mealId => {
+                const meal = allMeals.find(m => m.id === mealId);
+                if (!meal || !meal.ingredients) return;
+
+                meal.ingredients.forEach(ing => {
+                    const parsed = parseIngredient(ing);
+                    const key = `${(parsed.unit || 'item').toLowerCase()}|${parsed.item.toLowerCase()}`;
+
+                    if (!consolidated[key]) {
+                        consolidated[key] = {
+                            quantity: 0,
+                            unit: parsed.unit,
+                            item: parsed.item,
+                            count: 0,
+                            meals: []
+                        };
+                    }
+                    consolidated[key].meals.push(mealId);
+                    if (parsed.quantity !== null && !isNaN(parsed.quantity)) {
+                        consolidated[key].quantity += parsed.quantity;
+                    } else {
+                        consolidated[key].count += 1;
+                    }
+                });
+            });
+
+            return Object.values(consolidated).map(ing => ({
+                ...ing,
+                display: ing.quantity > 0 ? `${ing.quantity} ${ing.unit || ''}` : (ing.count > 0 ? `×${ing.count}` : ''),
+                item: ing.item.charAt(0).toUpperCase() + ing.item.slice(1)
+            }));
+        };
+
+        // Utility: Shuffle function for quick fill
+        const shuffleArray = (arr) => {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        };
+
+        // Storage utilities
+        const storage = {
+            getMeals: () => {
+                const stored = localStorage.getItem("meals");
+                if (!stored) return SEED_MEALS;
+                const existing = JSON.parse(stored);
+                // Merge any new seed recipes not yet in localStorage
+                const existingIds = new Set(existing.map(m => m.id));
+                const newSeeds = SEED_MEALS.filter(s => !existingIds.has(s.id));
+                // Also update existing seed recipes that have been improved
+                const UPDATED_SEED_IDS = ["butter-chicken"];
+                const updated = existing.map(m => {
+                    if (UPDATED_SEED_IDS.includes(m.id) && m.rating === 0) {
+                        const freshSeed = SEED_MEALS.find(s => s.id === m.id);
+                        return freshSeed || m;
+                    }
+                    return m;
+                });
+                if (newSeeds.length > 0) {
+                    const merged = [...updated, ...newSeeds];
+                    localStorage.setItem("meals", JSON.stringify(merged));
+                    return merged;
+                }
+                if (UPDATED_SEED_IDS.some(id => existing.find(m => m.id === id && m.rating === 0))) {
+                    localStorage.setItem("meals", JSON.stringify(updated));
+                    return updated;
+                }
+                return existing;
+            },
+            saveMeals: (meals) => localStorage.setItem("meals", JSON.stringify(meals)),
+
+            getWeekPlan: () => {
+                const stored = localStorage.getItem("weekPlan");
+                return stored ? JSON.parse(stored) : {};
+            },
+            saveWeekPlan: (plan) => localStorage.setItem("weekPlan", JSON.stringify(plan)),
+
+            getFamilySettings: () => {
+                const stored = localStorage.getItem("familySettings");
+                return stored ? JSON.parse(stored) : FAMILY_MEMBERS.reduce((acc, m) => ({ ...acc, [m.id]: { ...m } }), {});
+            },
+            saveFamilySettings: (settings) => localStorage.setItem("familySettings", JSON.stringify(settings)),
+
+            getShoppingList: () => {
+                try {
+                    const stored = localStorage.getItem("shoppingList");
+                    if (!stored) return {};
+                    const parsed = JSON.parse(stored);
+                    // Validate format: values should be objects with 'item' property
+                    // If old format (values are numbers), clear it
+                    const firstVal = Object.values(parsed)[0];
+                    if (firstVal && typeof firstVal === "number") {
+                        localStorage.removeItem("shoppingList");
+                        return {};
+                    }
+                    return parsed;
+                } catch (e) {
+                    localStorage.removeItem("shoppingList");
+                    return {};
+                }
+            },
+            saveShoppingList: (list) => localStorage.setItem("shoppingList", JSON.stringify(list)),
+
+            getSettings: () => {
+                const stored = localStorage.getItem("settings");
+                return stored ? JSON.parse(stored) : { useMealDB: true, spoonacularKey: "" };
+            },
+            saveSettings: (settings) => localStorage.setItem("settings", JSON.stringify(settings))
+        };
+
+        // Fuzzy search utility - searches name AND ingredients
+        const fuzzySearch = (query, items, key) => {
+            if (!query) return items;
+            const lowerQuery = query.toLowerCase();
+            const queryWords = lowerQuery.split(/\s+/).filter(Boolean);
+            return items
+                .map(item => {
+                    // Score from name match
+                    let nameScore = calculateFuzzyScore(lowerQuery, item[key].toLowerCase());
+                    // Score from ingredient matches
+                    let ingredientScore = 0;
+                    if (item.ingredients && Array.isArray(item.ingredients)) {
+                        const allIngredients = item.ingredients.join(" ").toLowerCase();
+                        queryWords.forEach(word => {
+                            if (allIngredients.includes(word)) ingredientScore += 5;
+                        });
+                    }
+                    // Score from notes match
+                    let notesScore = 0;
+                    if (item.notes) {
+                        queryWords.forEach(word => {
+                            if (item.notes.toLowerCase().includes(word)) notesScore += 2;
+                        });
+                    }
+                    return { item, score: nameScore + ingredientScore + notesScore };
+                })
+                .filter(({ score }) => score > 0)
+                .sort((a, b) => b.score - a.score)
+                .map(({ item }) => item);
+        };
+
+        const calculateFuzzyScore = (query, target) => {
+            let score = 0;
+            let queryIdx = 0;
+            let targetIdx = 0;
+
+            while (queryIdx < query.length && targetIdx < target.length) {
+                if (query[queryIdx] === target[targetIdx]) {
+                    score += 1 + (10 / (targetIdx + 1));
+                    queryIdx++;
+                }
+                targetIdx++;
+            }
+
+            if (queryIdx === query.length) return score;
+            return 0;
+        };
+
+        // Get today's date key for planning
+        const getTodayKey = () => {
+            const today = new Date();
+            return today.toISOString().split("T")[0];
+        };
+
+        const getWeekDatesForOffset = (offset) => {
+            const today = new Date();
+            const dates = [];
+            const start = new Date(today);
+            start.setDate(start.getDate() - today.getDay() + (offset * 7));
+
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(start);
+                date.setDate(date.getDate() + i);
+                dates.push(date.toISOString().split("T")[0]);
+            }
+
+            return dates;
+        };
+
+        const getWeekDates = () => getWeekDatesForOffset(0);
+
+        const formatDate = (dateStr) => {
+            if (!dateStr) return "";
+            const [year, month, day] = dateStr.split("-");
+            const date = new Date(year, month - 1, day);
+            return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+        };
+
+        const getDayName = (dateStr) => {
+            if (!dateStr) return "";
+            const [year, month, day] = dateStr.split("-");
+            const date = new Date(year, month - 1, day);
+            return date.toLocaleDateString("en-US", { weekday: "long" });
+        };
+
+        // Main App Component - continued in next script section
+        function App() {
+            const [currentView, setCurrentView] = useState("planner");
+            const [meals, setMeals] = useState(() => storage.getMeals());
+            const [weekPlan, setWeekPlan] = useState(() => storage.getWeekPlan());
+            const [familySettings, setFamilySettings] = useState(() => storage.getFamilySettings());
+            const [shoppingList, setShoppingList] = useState(() => storage.getShoppingList());
+            const [settings, setSettings] = useState(() => storage.getSettings());
+            const [daysToShop, setDaysToShop] = useState(3);
+            const [weekOffset, setWeekOffset] = useState(0);
+            const [shoppingListDetails, setShoppingListDetails] = useState({});
+            const [showAddMealModal, setShowAddMealModal] = useState(false);
+            const [showMealPickerModal, setShowMealPickerModal] = useState(false);
+            const [showRecipeSearchModal, setShowRecipeSearchModal] = useState(false);
+            const [selectedMeal, setSelectedMeal] = useState(null);
+            const [selectedSlot, setSelectedSlot] = useState(null);
+            const [addMealInitialName, setAddMealInitialName] = useState("");
+            // Feature: Voting
+            const [showVotingModal, setShowVotingModal] = useState(false);
+            const [votingStep, setVotingStep] = useState("candidates"); // "candidates", "send", "tally"
+            const [voteCandidates, setVoteCandidates] = useState([]);
+            const [selectedCandidates, setSelectedCandidates] = useState([]);
+            const [familyVotes, setFamilyVotes] = useState({});
+            // Feature: Deals
+            const [dealsNotepad, setDealsNotepad] = useState(() => localStorage.getItem("dealsNotepad") || "");
+            const [manualItems, setManualItems] = useState(() => {
+                const stored = localStorage.getItem("manualShoppingItems");
+                return stored ? JSON.parse(stored) : [];
+            });
+            const [newManualItem, setNewManualItem] = useState("");
+            // Feature: Quick Fill
+            const [showQuickFillModal, setShowQuickFillModal] = useState(false);
+            const [quickFillPreview, setQuickFillPreview] = useState([]);
+
+            // Get active family members
+            const familyMembers = FAMILY_MEMBERS.map(m => {
+                const settings = familySettings[m.id];
+                return { ...m, ...(settings || {}) };
+            }).filter(m => {
+                if (m.visiting === undefined) return true;
+                return m.visiting || m.visiting === undefined;
+            });
+
+            const isFavorite = (mealId) => {
+                const meal = meals.find(m => m.id === mealId);
+                return meal && meal.rating >= 4.5;
+            };
+
+            // Save data to localStorage
+            useEffect(() => {
+                storage.saveMeals(meals);
+            }, [meals]);
+
+            useEffect(() => {
+                storage.saveWeekPlan(weekPlan);
+            }, [weekPlan]);
+
+            useEffect(() => {
+                storage.saveFamilySettings(familySettings);
+            }, [familySettings]);
+
+            useEffect(() => {
+                storage.saveShoppingList(shoppingList);
+            }, [shoppingList]);
+
+            useEffect(() => {
+                storage.saveSettings(settings);
+            }, [settings]);
+
+            useEffect(() => {
+                localStorage.setItem("dealsNotepad", dealsNotepad);
+            }, [dealsNotepad]);
+
+            useEffect(() => {
+                localStorage.setItem("manualShoppingItems", JSON.stringify(manualItems));
+            }, [manualItems]);
+
+            const addManualItem = () => {
+                const text = newManualItem.trim();
+                if (!text) return;
+                // Split on commas, "and", or newlines so "milk, bread and string cheese" becomes 3 items
+                const items = text.split(/,|\band\b|\n/).map(s => s.trim()).filter(Boolean);
+                const newItems = items.map((item, i) => ({ id: Date.now() + i, text: item, checked: false }));
+                setManualItems(prev => [...prev, ...newItems]);
+                setNewManualItem("");
+            };
+
+            const toggleManualItem = (id) => {
+                setManualItems(prev => prev.map(item =>
+                    item.id === id ? { ...item, checked: !item.checked } : item
+                ));
+            };
+
+            const removeManualItem = (id) => {
+                setManualItems(prev => prev.filter(item => item.id !== id));
+            };
+
+            const clearCheckedManualItems = () => {
+                setManualItems(prev => prev.filter(item => !item.checked));
+            };
+
+            const handleAddMeal = (newMeal) => {
+                const mealWithId = {
+                    ...newMeal,
+                    id: `custom-${Date.now()}`,
+                    rating: 0,
+                    ratings: {},
+                    steps: [],
+                    recipeUrl: ""
+                };
+                const updatedMeals = [...meals, mealWithId];
+                setMeals(updatedMeals);
+                setShowAddMealModal(false);
+                setAddMealInitialName("");
+                // If we came from a planner slot, auto-assign the new meal
+                if (selectedSlot) {
+                    setWeekPlan({
+                        ...weekPlan,
+                        [selectedSlot]: mealWithId.id
+                    });
+                    setSelectedSlot(null);
+                }
+            };
+
+            const handleSelectMeal = (mealId) => {
+                if (selectedSlot) {
+                    setWeekPlan({
+                        ...weekPlan,
+                        [selectedSlot]: mealId
+                    });
+                }
+                setShowMealPickerModal(false);
+                setShowRecipeSearchModal(false);
+                setSelectedSlot(null);
+            };
+
+            const handleMealSlotClick = (slotKey) => {
+                setSelectedSlot(slotKey);
+                setShowRecipeSearchModal(true);
+            };
+
+            const generateShoppingList = () => {
+                try {
+                    console.log("[Shopping] Starting generation...");
+                    const shopDates = getWeekDatesForOffset(weekOffset);
+                    console.log("[Shopping] Week dates:", shopDates);
+
+                    // Find ALL meals on the planner — if you planned it, you want to shop for it
+                    const foundMeals = [];
+                    shopDates.forEach(dateStr => {
+                        ["breakfast", "lunch", "dinner"].forEach(mealType => {
+                            const slotKey = `${dateStr}-${mealType}`;
+                            const mealId = weekPlan[slotKey];
+                            if (mealId) {
+                                const meal = meals.find(m => m.id === mealId);
+                                if (meal) {
+                                    foundMeals.push(meal);
+                                    console.log("[Shopping] Found meal:", meal.name, "on", slotKey);
+                                }
+                            }
+                        });
+                    });
+
+                    if (foundMeals.length === 0) {
+                        console.log("[Shopping] No meals found on planner!");
+                        alert("No meals on your planner! Add meals first, then generate your shopping list.");
+                        return;
+                    }
+
+                    // Step 2: Parse every ingredient from every meal directly
+                    // No dedup — go straight to consolidation so quantities add up
+                    const finalList = {};
+                    foundMeals.forEach(meal => {
+                        if (!meal.ingredients || !Array.isArray(meal.ingredients)) return;
+                        meal.ingredients.forEach(ing => {
+                            const parsed = parseIngredient(ing);
+                            const itemKey = (parsed.item || ing).toLowerCase().trim();
+                            const unitKey = (parsed.unit || "each").toLowerCase();
+                            const consolidationKey = `${itemKey}__${unitKey}`;
+
+                            if (!finalList[consolidationKey]) {
+                                finalList[consolidationKey] = {
+                                    item: (parsed.item || ing).charAt(0).toUpperCase() + (parsed.item || ing).slice(1),
+                                    quantity: 0,
+                                    unit: parsed.unit,
+                                    meals: []
+                                };
+                            }
+
+                            if (parsed.quantity !== null && !isNaN(parsed.quantity)) {
+                                finalList[consolidationKey].quantity += parsed.quantity;
+                            }
+                            if (!finalList[consolidationKey].meals.includes(meal.id)) {
+                                finalList[consolidationKey].meals.push(meal.id);
+                            }
+                        });
+                    });
+
+                    // Build display strings
+                    Object.values(finalList).forEach(entry => {
+                        if (entry.quantity > 0 && entry.unit) {
+                            entry.display = `${entry.quantity} ${entry.unit}`;
+                        } else if (entry.quantity > 0) {
+                            entry.display = `${entry.quantity}`;
+                        } else {
+                            entry.display = "";
+                        }
+                    });
+
+                    console.log("[Shopping] Generated", Object.keys(finalList).length, "items");
+                    setShoppingList(finalList);
+                    setCurrentView("shopping");
+                } catch (err) {
+                    console.error("[Shopping] ERROR:", err);
+                    alert("Error generating shopping list: " + err.message);
+                }
+            };
+
+            const weekDates = getWeekDatesForOffset(weekOffset);
+
+            const removeMealFromSlot = (slotKey, e) => {
+                e.stopPropagation();
+                const updated = { ...weekPlan };
+                delete updated[slotKey];
+                setWeekPlan(updated);
+                storage.saveWeekPlan(updated);
+            };
+
+            const clearWeek = () => {
+                if (confirm("Clear all meals from this week?")) {
+                    const updated = { ...weekPlan };
+                    weekDates.forEach(date => {
+                        ["breakfast", "lunch", "dinner"].forEach(type => {
+                            delete updated[`${date}-${type}`];
+                        });
+                    });
+                    setWeekPlan(updated);
+                    storage.saveWeekPlan(updated);
+                }
+            };
+
+            const renderMealSlot = (dateStr, mealType) => {
+                const slotKey = `${dateStr}-${mealType}`;
+                const mealId = weekPlan[slotKey];
+                const meal = meals.find(m => m.id === mealId);
+
+                return (
+                    <div key={slotKey} onClick={() => handleMealSlotClick(slotKey)} className={`meal-slot ${!meal ? "empty" : ""}`}>
+                        {meal ? (
+                            <div className="meal-slot-content" style={{ display: "flex", alignItems: "center", width: "100%" }}>
+                                <span className="meal-slot-icon">{MEAL_ICONS[meal.cuisine]}</span>
+                                <span className="meal-slot-name" style={{ flex: 1 }}>
+                                    {meal.name}
+                                    {meal.prepType && (
+                                        <span className={`prep-badge ${meal.prepType}`}>
+                                            {meal.prepType === "prep" ? "🥘 Prep" : "🔥 Fresh"}
+                                        </span>
+                                    )}
+                                </span>
+                                <button
+                                    onClick={(e) => removeMealFromSlot(slotKey, e)}
+                                    style={{ background: "none", border: "none", color: "#999", cursor: "pointer", fontSize: "18px", padding: "4px 8px", marginLeft: "4px", lineHeight: 1 }}
+                                    title="Remove meal"
+                                >✕</button>
+                            </div>
+                        ) : (
+                            <div className="meal-slot-content">
+                                <span style={{ color: "var(--text-light)" }}>+ Add meal</span>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            return (
+                <div className="app-container">
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                        <header className="app-header">
+                            <h1>Schwartz Family Meals</h1>
+                            <div className="subtitle">Plan, cook, enjoy together</div>
+                        </header>
+
+                        <div className="app-content">
+                            {currentView === "planner" && (
+                                <div className="view active">
+                                    <div style={{ padding: "12px" }}>
+                                        <div className="hero-card">
+                                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                                                <button onClick={() => setWeekOffset(weekOffset - 1)} style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", padding: "4px 12px" }}>‹</button>
+                                                <h2 style={{ margin: 0 }}>
+                                                    {weekOffset === 0 ? "This Week" : weekOffset === 1 ? "Next Week" : weekOffset === -1 ? "Last Week" : `Week of ${formatDate(weekDates[0])}`}
+                                                </h2>
+                                                <button onClick={() => setWeekOffset(weekOffset + 1)} style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", padding: "4px 12px" }}>›</button>
+                                            </div>
+                                            {weekOffset !== 0 && (
+                                                <div style={{ textAlign: "center", marginBottom: "8px" }}>
+                                                    <button className="btn btn-secondary btn-small" onClick={() => setWeekOffset(0)}>Back to This Week</button>
+                                                </div>
+                                            )}
+                                            <div style={{ marginBottom: "16px", display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+                                                <button className="btn btn-primary btn-small" onClick={generateShoppingList}>
+                                                    🛒 Shopping List
+                                                </button>
+                                                <button className="btn btn-primary btn-small" onClick={() => {
+                                                    const emptySlots = [];
+                                                    weekDates.forEach(date => {
+                                                        ["breakfast", "lunch", "dinner"].forEach(type => {
+                                                            if (!weekPlan[`${date}-${type}`]) {
+                                                                emptySlots.push(`${date}-${type}`);
+                                                            }
+                                                        });
+                                                    });
+                                                    if (emptySlots.length === 0) {
+                                                        alert("All slots are filled!");
+                                                        return;
+                                                    }
+                                                    setShowQuickFillModal(true);
+                                                }}>
+                                                    🔀 Quick Fill
+                                                </button>
+                                                <button className="btn btn-primary btn-small" onClick={() => {
+                                                    setVotingStep("candidates");
+                                                    setSelectedCandidates([]);
+                                                    setFamilyVotes({});
+                                                    setShowVotingModal(true);
+                                                }}>
+                                                    🗳️ Vote
+                                                </button>
+                                                <button className="btn btn-secondary btn-small" onClick={clearWeek}>
+                                                    🗑️ Clear
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {weekDates.map(date => (
+                                            <div key={date} style={{ marginBottom: "20px" }}>
+                                                <div style={{ fontSize: "14px", fontWeight: "700", padding: "12px", color: "var(--primary)" }}>
+                                                    {getDayName(date)} - {formatDate(date)}
+                                                </div>
+                                                <div style={{ paddingLeft: "12px", paddingRight: "12px" }}>
+                                                    {renderMealSlot(date, "breakfast")}
+                                                    {renderMealSlot(date, "lunch")}
+                                                    {renderMealSlot(date, "dinner")}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {currentView === "recipes" && (
+                                <div className="view active">
+                                    <div style={{ padding: "12px" }}>
+                                        <div style={{ padding: "0 12px" }}>
+                                            {["American", "Mexican", "Asian", "Mediterranean", "Indian"].map(cuisine => (
+                                                <div key={cuisine}>
+                                                    <h3 style={{ fontSize: "14px", fontWeight: "700", margin: "16px 0 12px", color: "var(--text-dark)" }}>
+                                                        {CUISINE_ICONS[cuisine]} {cuisine}
+                                                    </h3>
+                                                    {meals.filter(m => m.cuisine === cuisine).slice(0, 5).map(meal => (
+                                                        <div key={meal.id} className="search-result-item" onClick={() => setSelectedMeal(meal)}>
+                                                            <div className="search-result-icon">{MEAL_ICONS[meal.cuisine]}</div>
+                                                            <div className="search-result-text">
+                                                                <div className="search-result-name">
+                                                                    {meal.name}
+                                                                    {meal.prepType && (
+                                                                        <span className={`prep-badge ${meal.prepType}`}>
+                                                                            {meal.prepType === "prep" ? "🥘 Prep" : "🔥 Fresh"}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="search-result-meta">{meal.cuisine} • {meal.prepTime}m</div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {currentView === "shopping" && (
+                                <div className="view active">
+                                    <div style={{ padding: "12px" }}>
+                                        <div className="card" style={{ marginBottom: "12px" }}>
+                                            <div style={{ fontSize: "16px", fontWeight: "700", marginBottom: "12px" }}>Quick Add Items</div>
+                                            <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+                                                <input
+                                                    type="text"
+                                                    value={newManualItem}
+                                                    onChange={(e) => setNewManualItem(e.target.value)}
+                                                    onKeyDown={(e) => e.key === "Enter" && addManualItem()}
+                                                    placeholder="Add item (e.g., milk, bread, eggs)"
+                                                    style={{ flex: 1, padding: "10px", border: "1px solid var(--border-light)", borderRadius: "8px", fontSize: "14px" }}
+                                                />
+                                                <button className="btn btn-primary" onClick={addManualItem} style={{ whiteSpace: "nowrap" }}>+ Add</button>
+                                            </div>
+                                            {manualItems.length > 0 && (
+                                                <div>
+                                                    {manualItems.map(item => (
+                                                        <div key={item.id} className="ingredient-item" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={item.checked}
+                                                                onChange={() => toggleManualItem(item.id)}
+                                                                style={{ width: "16px", height: "16px" }}
+                                                            />
+                                                            <div style={{ flex: 1, textDecoration: item.checked ? "line-through" : "none", color: item.checked ? "var(--text-light)" : "var(--text-dark)" }}>
+                                                                {item.text}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => removeManualItem(item.id)}
+                                                                style={{ background: "none", border: "none", color: "var(--text-light)", cursor: "pointer", fontSize: "16px", padding: "4px" }}
+                                                            >✕</button>
+                                                        </div>
+                                                    ))}
+                                                    {manualItems.some(i => i.checked) && (
+                                                        <button
+                                                            className="btn btn-secondary btn-small"
+                                                            onClick={clearCheckedManualItems}
+                                                            style={{ marginTop: "8px" }}
+                                                        >Clear checked items</button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="card">
+                                            <div style={{ fontSize: "16px", fontWeight: "700", marginBottom: "12px" }}>Meal Plan Shopping List</div>
+                                            <select style={{ width: "100%", padding: "10px", marginBottom: "16px", borderRadius: "8px", border: "1px solid var(--border-light)", fontSize: "14px" }}>
+                                                {STORES.map(store => (
+                                                    <option key={store} value={store}>{store}</option>
+                                                ))}
+                                            </select>
+
+                                            {(() => {
+                                                const entries = Object.entries(shoppingList);
+
+                                                if (entries.length === 0) {
+                                                    return (
+                                                        <div className="empty-state">
+                                                            <div className="empty-state-icon">📋</div>
+                                                            <div className="empty-state-text">Generate a shopping list from your meal plan</div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                // Categorize
+                                                const categorized = {};
+                                                const uncategorized = [];
+                                                entries.forEach(([key, entry]) => {
+                                                    if (!entry || typeof entry !== "object") return;
+                                                    const itemName = entry.item || key;
+                                                    let placed = false;
+                                                    for (const cat of Object.keys(INGREDIENT_CATEGORIES)) {
+                                                        if (INGREDIENT_CATEGORIES[cat].some(kw => itemName.toLowerCase().includes(kw.toLowerCase()))) {
+                                                            if (!categorized[cat]) categorized[cat] = [];
+                                                            categorized[cat].push({ key, entry, itemName });
+                                                            placed = true;
+                                                            break;
+                                                        }
+                                                    }
+                                                    if (!placed) uncategorized.push({ key, entry, itemName });
+                                                });
+
+                                                const renderIngredient = ({ key, entry, itemName }) => {
+                                                    const qty = entry.display || "";
+                                                    const mealNames = (entry.meals || []).map(id => {
+                                                        const m = meals.find(ml => ml.id === id);
+                                                        return m ? m.name : "";
+                                                    }).filter(Boolean);
+                                                    const hasDeal = dealsNotepad && itemName.split(" ").some(w => w.length > 3 && dealsNotepad.toLowerCase().includes(w.toLowerCase()));
+                                                    return (
+                                                        <div key={key} className="ingredient-item">
+                                                            <input type="checkbox" style={{ width: "16px", height: "16px" }} />
+                                                            <div style={{ flex: 1 }}>
+                                                                <div style={{ fontWeight: "600" }}>
+                                                                    {qty ? qty + " " : ""}{itemName}
+                                                                    {hasDeal && <span className="deal-badge"> 🏷️</span>}
+                                                                </div>
+                                                                {mealNames.length > 0 && (
+                                                                    <div style={{ fontSize: "11px", color: "var(--text-light)" }}>
+                                                                        For: {mealNames.join(", ")}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                };
+
+                                                return (
+                                                    <>
+                                                        {Object.keys(INGREDIENT_CATEGORIES).map(cat => {
+                                                            const items = categorized[cat];
+                                                            if (!items || items.length === 0) return null;
+                                                            return (
+                                                                <div key={cat} style={{ marginBottom: "16px" }}>
+                                                                    <div style={{ fontSize: "13px", fontWeight: "700", color: "var(--primary)", marginBottom: "8px" }}>
+                                                                        {cat}
+                                                                    </div>
+                                                                    {items.map(renderIngredient)}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        {uncategorized.length > 0 && (
+                                                            <div style={{ marginBottom: "16px" }}>
+                                                                <div style={{ fontSize: "13px", fontWeight: "700", color: "var(--primary)", marginBottom: "8px" }}>Other</div>
+                                                                {uncategorized.map(renderIngredient)}
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
+                                        </div>
+
+                                        <div className="card" style={{ marginTop: "16px" }}>
+                                            <div style={{ fontSize: "16px", fontWeight: "700", marginBottom: "12px" }}>Store Deals & Coupons</div>
+                                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
+                                                <a href="https://www.wholefoodsmarket.com/sales-flyer" target="_blank" rel="noopener noreferrer" className="store-link">Whole Foods</a>
+                                                <a href="https://www.ralphs.com/savings/cl/coupons/" target="_blank" rel="noopener noreferrer" className="store-link">Ralphs</a>
+                                                <a href="https://www.costco.com/warehouse-coupon-offers.html" target="_blank" rel="noopener noreferrer" className="store-link">Costco</a>
+                                                <a href="https://www.traderjoes.com/home/discover/category/new-at-trader-joes" target="_blank" rel="noopener noreferrer" className="store-link">Trader Joe's</a>
+                                                <a href="https://www.northgatemarket.com/weekly-ads" target="_blank" rel="noopener noreferrer" className="store-link">Northgate Market</a>
+                                                <span className="store-link" style={{ cursor: "default", color: "var(--text-light)" }}>Bob's Market</span>
+                                            </div>
+                                            <div style={{ fontSize: "13px", fontWeight: "600", marginBottom: "8px" }}>Current Deals</div>
+                                            <textarea
+                                                className="deals-notepad"
+                                                value={dealsNotepad}
+                                                onChange={(e) => setDealsNotepad(e.target.value)}
+                                                placeholder="Jot down current deals (e.g., 'Ribeye $8.99/lb @ Ralphs', 'Salmon on sale @Whole Foods')"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {currentView === "family" && (
+                                <div className="view active">
+                                    <div style={{ padding: "12px" }}>
+                                        <div className="card">
+                                            <div style={{ fontSize: "16px", fontWeight: "700", marginBottom: "16px" }}>Family Settings</div>
+
+                                            <div style={{ marginBottom: "20px" }}>
+                                                <div style={{ fontSize: "13px", fontWeight: "700", color: "var(--primary)", marginBottom: "12px" }}>
+                                                    Visiting Status
+                                                </div>
+                                                {FAMILY_MEMBERS.map(member => {
+                                                    if (member.visiting === undefined) return null;
+                                                    const isVisiting = familySettings[member.id]?.visiting || false;
+                                                    return (
+                                                        <div key={member.id} className="setting-item">
+                                                            <span className="setting-label">{member.name}</span>
+                                                            <label className="toggle-switch">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isVisiting}
+                                                                    onChange={(e) => {
+                                                                        setFamilySettings({
+                                                                            ...familySettings,
+                                                                            [member.id]: { ...familySettings[member.id], visiting: e.target.checked }
+                                                                        });
+                                                                    }}
+                                                                />
+                                                                <span className="toggle-slider"></span>
+                                                            </label>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            <div style={{ fontSize: "13px", fontWeight: "700", color: "var(--primary)", marginBottom: "12px" }}>
+                                                Recipe Search Settings
+                                            </div>
+                                            <div style={{ fontSize: "12px", color: "var(--text-light)", padding: "12px", background: "var(--cream)", borderRadius: "8px", marginBottom: "12px" }}>
+                                                TheMealDB is always on (free, ~300 recipes). For 5,000+ recipes with detailed ingredients, add a free Spoonacular API key below.
+                                            </div>
+                                            <div className="form-group" style={{ marginBottom: "12px" }}>
+                                                <label style={{ fontSize: "13px" }}>Spoonacular API Key (optional)</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Paste your free API key from spoonacular.com/food-api"
+                                                    value={settings.spoonacularKey || ""}
+                                                    onChange={(e) => {
+                                                        setSettings({ ...settings, spoonacularKey: e.target.value });
+                                                    }}
+                                                    style={{ fontSize: "13px" }}
+                                                />
+                                            </div>
+                                            <div style={{ fontSize: "11px", color: "var(--text-light)", padding: "8px 12px" }}>
+                                                Free tier: 150 searches/day. Sign up at spoonacular.com/food-api
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <nav className="bottom-nav">
+                        <button className={`nav-item ${currentView === "planner" ? "active" : ""}`} onClick={() => setCurrentView("planner")}>
+                            <div className="nav-icon">📅</div>
+                            <div className="nav-label">Planner</div>
+                        </button>
+                        <button className={`nav-item ${currentView === "recipes" ? "active" : ""}`} onClick={() => setCurrentView("recipes")}>
+                            <div className="nav-icon">🔍</div>
+                            <div className="nav-label">Recipes</div>
+                        </button>
+                        <button className={`nav-item ${currentView === "shopping" ? "active" : ""}`} onClick={() => setCurrentView("shopping")}>
+                            <div className="nav-icon">🛒</div>
+                            <div className="nav-label">Shopping</div>
+                        </button>
+                        <button className={`nav-item ${currentView === "family" ? "active" : ""}`} onClick={() => setCurrentView("family")}>
+                            <div className="nav-icon">👨‍👩‍👧‍👦</div>
+                            <div className="nav-label">Family</div>
+                        </button>
+                    </nav>
+
+                    {showRecipeSearchModal && (
+                        <RecipeSearchModal onClose={() => setShowRecipeSearchModal(false)} meals={meals} selectedSlot={selectedSlot} onSelectMeal={handleSelectMeal} setMeals={setMeals} onAddCustom={(prefill) => {
+                            setShowRecipeSearchModal(false);
+                            setAddMealInitialName(prefill || "");
+                            setShowAddMealModal(true);
+                        }} />
+                    )}
+
+                    {showMealPickerModal && (
+                        <MealPickerModal meals={meals} onSelectMeal={handleSelectMeal} onClose={() => setShowMealPickerModal(false)} slot={selectedSlot} isFavorite={isFavorite} />
+                    )}
+
+                    {showAddMealModal && (
+                        <AddMealModal onClose={() => { setShowAddMealModal(false); setAddMealInitialName(""); }} onSave={handleAddMeal} initialName={addMealInitialName} />
+                    )}
+
+                    {selectedMeal && (
+                        <MealDetailModal meal={selectedMeal} onClose={() => setSelectedMeal(null)} familyMembers={familyMembers} onRate={(memberId, rating) => {
+                            const updatedMeals = meals.map(m => {
+                                if (m.id === selectedMeal.id) {
+                                    const newRatings = { ...m.ratings, [memberId]: rating };
+                                    const newRating = Object.values(newRatings).reduce((a, b) => a + b, 0) / Object.values(newRatings).length;
+                                    return { ...m, ratings: newRatings, rating: newRating };
+                                }
+                                return m;
+                            });
+                            setMeals(updatedMeals);
+                            setSelectedMeal({ ...selectedMeal, ratings: updatedMeals.find(m => m.id === selectedMeal.id).ratings, rating: updatedMeals.find(m => m.id === selectedMeal.id).rating });
+                        }} />
+                    )}
+
+                    {showQuickFillModal && (
+                        <QuickFillModal onClose={() => setShowQuickFillModal(false)} weekPlan={weekPlan} setWeekPlan={setWeekPlan} meals={meals} getWeekDates={() => getWeekDatesForOffset(weekOffset)} />
+                    )}
+
+                    {showVotingModal && (
+                        <VotingModal onClose={() => setShowVotingModal(false)} votingStep={votingStep} setVotingStep={setVotingStep} selectedCandidates={selectedCandidates} setSelectedCandidates={setSelectedCandidates} familyVotes={familyVotes} setFamilyVotes={setFamilyVotes} voteCandidates={voteCandidates} setVoteCandidates={setVoteCandidates} meals={meals} familyMembers={familyMembers} weekPlan={weekPlan} setWeekPlan={setWeekPlan} getWeekDates={() => getWeekDatesForOffset(weekOffset)} setCurrentView={setCurrentView} />
+                    )}
+                </div>
+            );
+        }
+
+        function RecipeSearchModal({ onClose, meals, selectedSlot, onSelectMeal, setMeals, onAddCustom }) {
+            const [searchQuery, setSearchQuery] = useState("");
+            const [searchResults, setSearchResults] = useState([]);
+            const [onlineResults, setOnlineResults] = useState([]);
+            const [isSearching, setIsSearching] = useState(false);
+            const [expandedResult, setExpandedResult] = useState(null);
+            const [searchStatus, setSearchStatus] = useState("");
+            const searchTimer = useRef(null);
+            const settings = storage.getSettings();
+
+            const parseMealDBFull = (dbMeal) => {
+                const ingredients = [];
+                for (let i = 1; i <= 20; i++) {
+                    const ingredient = dbMeal[`strIngredient${i}`];
+                    const measure = dbMeal[`strMeasure${i}`];
+                    if (ingredient && ingredient.trim()) {
+                        const qty = measure && measure.trim() ? `${measure.trim()} ${ingredient.trim()}` : ingredient.trim();
+                        ingredients.push(qty);
+                    }
+                }
+                return {
+                    id: `mealdb-${dbMeal.idMeal}`,
+                    name: dbMeal.strMeal,
+                    cuisine: dbMeal.strArea || "International",
+                    prepTime: 30,
+                    ingredients: ingredients,
+                    steps: dbMeal.strInstructions
+                        ? dbMeal.strInstructions.split(/\r?\n/).filter(s => s.trim().length > 3).slice(0, 10)
+                        : [],
+                    recipeUrl: dbMeal.strSource || "",
+                    imageUrl: dbMeal.strMealThumb || "",
+                    notes: dbMeal.strCategory || "",
+                    rating: 0,
+                    ratings: {},
+                    source: "TheMealDB"
+                };
+            };
+
+            const parseSpoonacularRecipe = (recipe) => {
+                return {
+                    id: `spoon-${recipe.id}`,
+                    name: recipe.title,
+                    cuisine: (recipe.cuisines && recipe.cuisines[0]) || "International",
+                    prepTime: recipe.readyInMinutes || 30,
+                    ingredients: recipe.extendedIngredients
+                        ? recipe.extendedIngredients.map(ing => ing.original || `${ing.amount} ${ing.unit} ${ing.name}`)
+                        : [],
+                    steps: recipe.analyzedInstructions && recipe.analyzedInstructions[0]
+                        ? recipe.analyzedInstructions[0].steps.map(s => s.step)
+                        : [],
+                    recipeUrl: recipe.sourceUrl || "",
+                    imageUrl: recipe.image || "",
+                    notes: recipe.summary ? recipe.summary.replace(/<[^>]*>/g, "").substring(0, 100) : "",
+                    rating: 0,
+                    ratings: {},
+                    source: "Spoonacular"
+                };
+            };
+
+            // Fetch full meal details from TheMealDB by ID
+            const fetchMealDBDetails = async (mealId) => {
+                try {
+                    const resp = await fetch(`https://www.themealdb.com/api/json/v1/1/lookup.php?i=${mealId}`);
+                    const data = await resp.json();
+                    if (data.meals && data.meals[0]) {
+                        return parseMealDBFull(data.meals[0]);
+                    }
+                } catch (err) { /* silently fail */ }
+                return null;
+            };
+
+            const handleSearch = (query) => {
+                setSearchQuery(query);
+                if (searchTimer.current) clearTimeout(searchTimer.current);
+
+                if (!query.trim()) {
+                    setSearchResults([]);
+                    setOnlineResults([]);
+                    setIsSearching(false);
+                    setExpandedResult(null);
+                    setSearchStatus("");
+                    return;
+                }
+
+                // Instant local results
+                const localResults = fuzzySearch(query, meals, "name");
+                setSearchResults(localResults.slice(0, 5));
+
+                // Debounced API search (500ms)
+                setIsSearching(true);
+                setSearchStatus("Searching online...");
+                searchTimer.current = setTimeout(async () => {
+                    const seenIds = new Set();
+                    const apiResults = [];
+
+                    // --- TheMealDB: 3 search strategies ---
+
+                    // Strategy 1: Name search (finds "French Toast", "Chicken Alfredo", etc.)
+                    try {
+                        setSearchStatus("Searching by name...");
+                        const resp = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`);
+                        const data = await resp.json();
+                        if (data.meals) {
+                            data.meals.forEach(m => {
+                                if (!seenIds.has(m.idMeal)) {
+                                    seenIds.add(m.idMeal);
+                                    apiResults.push(parseMealDBFull(m));
+                                }
+                            });
+                        }
+                    } catch (err) { /* silently fail */ }
+
+                    // Strategy 2: Ingredient filter (finds ALL recipes using that ingredient)
+                    // Try each word in the query as a potential ingredient
+                    const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+                    for (const word of words) {
+                        try {
+                            setSearchStatus(`Searching by ingredient: ${word}...`);
+                            const resp = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(word)}`);
+                            const data = await resp.json();
+                            if (data.meals) {
+                                // Filter endpoint only returns id/name/image, need to fetch full details
+                                const newMeals = data.meals.filter(m => !seenIds.has(m.idMeal)).slice(0, 8);
+                                setSearchStatus(`Found ${data.meals.length} ${word} recipes, loading details...`);
+                                for (const stub of newMeals) {
+                                    if (seenIds.has(stub.idMeal)) continue;
+                                    seenIds.add(stub.idMeal);
+                                    const full = await fetchMealDBDetails(stub.idMeal);
+                                    if (full) apiResults.push(full);
+                                }
+                            }
+                        } catch (err) { /* ingredient not found, skip */ }
+                    }
+
+                    // Strategy 3: First letter search as fallback if nothing found
+                    if (apiResults.length < 3 && query.length >= 1) {
+                        try {
+                            const resp = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?f=${query[0]}`);
+                            const data = await resp.json();
+                            if (data.meals) {
+                                const lowerQuery = query.toLowerCase();
+                                data.meals
+                                    .filter(m => m.strMeal.toLowerCase().includes(lowerQuery) || lowerQuery.split(/\s+/).some(w => m.strMeal.toLowerCase().includes(w)))
+                                    .slice(0, 5)
+                                    .forEach(m => {
+                                        if (!seenIds.has(m.idMeal)) {
+                                            seenIds.add(m.idMeal);
+                                            apiResults.push(parseMealDBFull(m));
+                                        }
+                                    });
+                            }
+                        } catch (err) { /* silently fail */ }
+                    }
+
+                    // --- Spoonacular (if key provided) ---
+                    if (settings.spoonacularKey) {
+                        try {
+                            setSearchStatus("Searching Spoonacular...");
+                            const resp = await fetch(`https://api.spoonacular.com/recipes/complexSearch?query=${encodeURIComponent(query)}&addRecipeInformation=true&fillIngredients=true&number=5&apiKey=${settings.spoonacularKey}`);
+                            const data = await resp.json();
+                            if (data.results) {
+                                data.results.forEach(r => {
+                                    apiResults.push(parseSpoonacularRecipe(r));
+                                });
+                            }
+                        } catch (err) { /* silently fail */ }
+                    }
+
+                    // Dedupe by name (case-insensitive)
+                    const seenNames = new Set(meals.map(m => m.name.toLowerCase()));
+                    const unique = apiResults.filter(r => {
+                        const lower = r.name.toLowerCase();
+                        if (seenNames.has(lower)) return false;
+                        seenNames.add(lower);
+                        return true;
+                    });
+
+                    setOnlineResults(unique);
+                    setIsSearching(false);
+                    setSearchStatus(unique.length > 0 ? `${unique.length} online recipes found` : "");
+                }, 500);
+            };
+
+            const addOnlineRecipeAndSelect = (recipe) => {
+                const currentMeals = storage.getMeals();
+                const existing = currentMeals.find(m => m.id === recipe.id);
+                if (!existing) {
+                    currentMeals.push(recipe);
+                    storage.saveMeals(currentMeals);
+                    setMeals(currentMeals);
+                }
+                onSelectMeal(recipe.id);
+            };
+
+            return (
+                <div className="modal active" onClick={(e) => e.target === e.currentTarget && onClose()}>
+                    <div className="modal-content" style={{ maxHeight: "90vh" }}>
+                        <div className="modal-header">
+                            <div>Find a Recipe</div>
+                            <button className="modal-close" onClick={onClose}>✕</button>
+                        </div>
+
+                        <div style={{ padding: "0 20px 20px" }}>
+                            <input
+                                type="text"
+                                className="search-input"
+                                placeholder="What are you in the mood for? (e.g. chicken, french toast, salmon...)"
+                                value={searchQuery}
+                                onChange={(e) => handleSearch(e.target.value)}
+                                autoFocus
+                                style={{ fontSize: "16px", padding: "14px" }}
+                            />
+
+                            {!searchQuery && (
+                                <div style={{ padding: "12px 0" }}>
+                                    <div style={{ fontSize: "13px", color: "var(--text-light)", marginBottom: "10px" }}>Quick ideas:</div>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                                        {["Chicken", "Beef", "Salmon", "Pasta", "Pork", "Lamb", "Shrimp", "Vegetarian"].map(chip => (
+                                            <button key={chip} className="chip" onClick={() => handleSearch(chip)} style={{ cursor: "pointer" }}>{chip}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {searchResults.length > 0 && (
+                                <>
+                                    <div style={{ fontSize: "13px", fontWeight: "700", color: "var(--accent)", marginTop: "12px", marginBottom: "8px" }}>
+                                        Your Library ({searchResults.length})
+                                    </div>
+                                    {searchResults.map(meal => (
+                                        <div key={meal.id} className="search-result-item" onClick={() => onSelectMeal(meal.id)}>
+                                            <div className="search-result-icon">{MEAL_ICONS[meal.cuisine] || "🍽"}</div>
+                                            <div className="search-result-text">
+                                                <div className="search-result-name">{meal.name}</div>
+                                                <div className="search-result-meta">
+                                                    {meal.cuisine} • {meal.prepTime}m
+                                                    {meal.ingredients ? ` • ${meal.ingredients.length} ingredients` : ""}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+
+                            {isSearching && (
+                                <div style={{ textAlign: "center", padding: "16px", color: "var(--text-light)", fontSize: "14px" }}>
+                                    <div style={{ marginBottom: "4px" }}>{searchStatus || "Searching online recipes..."}</div>
+                                    <div style={{ fontSize: "20px", animation: "fadeIn 0.5s ease infinite alternate" }}>🔍</div>
+                                </div>
+                            )}
+
+                            {!isSearching && onlineResults.length > 0 && (
+                                <>
+                                    <div style={{ fontSize: "13px", fontWeight: "700", color: "var(--primary)", marginTop: "16px", marginBottom: "4px" }}>
+                                        Online Recipes ({onlineResults.length} found)
+                                    </div>
+                                    <div style={{ fontSize: "11px", color: "var(--text-light)", marginBottom: "8px" }}>
+                                        Tap to preview ingredients. Hit "Use This Recipe" to add to your plan.
+                                    </div>
+                                    {onlineResults.map(recipe => (
+                                        <div key={recipe.id}>
+                                            <div className="search-result-item" onClick={() => setExpandedResult(expandedResult === recipe.id ? null : recipe.id)}>
+                                                <div className="search-result-icon">🌐</div>
+                                                <div className="search-result-text" style={{ flex: 1 }}>
+                                                    <div className="search-result-name">{recipe.name}</div>
+                                                    <div className="search-result-meta">
+                                                        {recipe.cuisine} • {recipe.prepTime}m • {recipe.ingredients.length} ingredients
+                                                    </div>
+                                                </div>
+                                                <div style={{ fontSize: "14px", color: "var(--text-light)", transform: expandedResult === recipe.id ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>▼</div>
+                                            </div>
+
+                                            {expandedResult === recipe.id && (
+                                                <div style={{ background: "var(--cream)", borderRadius: "8px", padding: "16px", margin: "0 0 8px 0", border: "1px solid var(--border-light)" }}>
+                                                    {recipe.ingredients.length > 0 && (
+                                                        <>
+                                                            <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "8px", color: "var(--text-dark)" }}>Ingredients ({recipe.ingredients.length}):</div>
+                                                            <ul style={{ fontSize: "13px", color: "var(--text-light)", paddingLeft: "20px", marginBottom: "12px", lineHeight: "1.6" }}>
+                                                                {recipe.ingredients.map((ing, idx) => (
+                                                                    <li key={idx}>{ing}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </>
+                                                    )}
+                                                    {recipe.steps.length > 0 && (
+                                                        <>
+                                                            <div style={{ fontWeight: "700", fontSize: "13px", marginBottom: "8px", color: "var(--text-dark)" }}>Directions:</div>
+                                                            <ol style={{ fontSize: "13px", color: "var(--text-light)", paddingLeft: "20px", marginBottom: "12px", lineHeight: "1.6" }}>
+                                                                {recipe.steps.slice(0, 8).map((step, idx) => (
+                                                                    <li key={idx} style={{ marginBottom: "4px" }}>{step}</li>
+                                                                ))}
+                                                                {recipe.steps.length > 8 && <li style={{ fontStyle: "italic" }}>...{recipe.steps.length - 8} more steps</li>}
+                                                            </ol>
+                                                        </>
+                                                    )}
+                                                    {recipe.recipeUrl && (
+                                                        <div style={{ fontSize: "12px", marginBottom: "12px" }}>
+                                                            <a href={recipe.recipeUrl} target="_blank" rel="noopener" style={{ color: "var(--primary)" }}>View original recipe ↗</a>
+                                                        </div>
+                                                    )}
+                                                    <button
+                                                        className="btn btn-primary"
+                                                        style={{ width: "100%" }}
+                                                        onClick={() => addOnlineRecipeAndSelect(recipe)}
+                                                    >
+                                                        Use This Recipe + Add to Shopping List
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+
+                            {searchQuery && !isSearching && searchResults.length === 0 && onlineResults.length === 0 && (
+                                <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-light)" }}>
+                                    <div style={{ fontSize: "40px", marginBottom: "8px" }}>🤷</div>
+                                    <div style={{ marginBottom: "4px", fontWeight: "600", color: "var(--text-dark)" }}>No matches found</div>
+                                    <div style={{ fontSize: "13px", marginBottom: "16px" }}>Try a simpler keyword (like "chicken" instead of "chicken garlic sauce"), or add it yourself</div>
+                                </div>
+                            )}
+
+                            <div style={{ borderTop: "1px solid var(--border-light)", paddingTop: "16px", marginTop: "16px" }}>
+                                <button
+                                    className="btn btn-primary"
+                                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                                    onClick={() => onAddCustom(searchQuery)}
+                                >
+                                    + Add Custom Meal {searchQuery ? `"${searchQuery}"` : ""}
+                                </button>
+                                {!settings.spoonacularKey && (
+                                    <div style={{ fontSize: "11px", color: "var(--text-light)", textAlign: "center", marginTop: "8px" }}>
+                                        Want 5,000+ recipes? Add a free Spoonacular API key in Family settings
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function MealDetailModal({ meal, onClose, familyMembers, onRate }) {
+            return (
+                <div className="modal active" onClick={(e) => e.target === e.currentTarget && onClose()}>
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <div>{meal.name}</div>
+                            <button className="modal-close" onClick={onClose}>✕</button>
+                        </div>
+
+                        <div style={{ paddingBottom: "20px" }}>
+                            <div className="hero-card" style={{ margin: "12px" }}>
+                                <div style={{ fontSize: "48px", marginBottom: "12px" }}>{MEAL_ICONS[meal.cuisine]}</div>
+                                <h2 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "8px" }}>{meal.name}</h2>
+                                <span className="cuisine-tag">{meal.cuisine}</span>
+                                <div style={{ marginTop: "12px", fontSize: "14px" }}>⏱ {meal.prepTime} minutes</div>
+                            </div>
+
+                            {meal.steps && meal.steps.length > 0 && (
+                                <div className="detail-section">
+                                    <div className="detail-section-title">Cooking Steps</div>
+                                    {meal.steps.map((step, idx) => (
+                                        <div key={idx} className="cooking-step">
+                                            <span className="cooking-step-number">{idx + 1}</span>
+                                            {step}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="detail-section">
+                                <div className="detail-section-title">Ingredients</div>
+                                {meal.ingredients && meal.ingredients.map((ingredient, idx) => (
+                                    <div key={idx} className="ingredient-item">
+                                        {ingredient}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {meal.notes && (
+                                <div className="detail-section">
+                                    <div className="detail-section-title">Notes</div>
+                                    <div style={{ padding: "12px", background: "var(--cream)", borderRadius: "8px", fontSize: "13px" }}>
+                                        {meal.notes}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="detail-section">
+                                <div className="detail-section-title">Family Ratings</div>
+                                <div className="ratings-grid">
+                                    {familyMembers.map(member => {
+                                        const memberRating = meal.ratings?.[member.id] || 0;
+                                        return (
+                                            <div key={member.id} className="rating-item">
+                                                <div className="rating-member">{member.name}</div>
+                                                <div className="rating-stars">
+                                                    {[1, 2, 3, 4, 5].map(star => (
+                                                        <button key={star} className="star" onClick={() => onRate(member.id, star)}>
+                                                            {star <= memberRating ? "⭐" : "☆"}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="detail-section">
+                                <div style={{ fontSize: "14px", fontWeight: "600", color: "var(--primary)" }}>
+                                    Average Rating: {"⭐".repeat(Math.round(meal.rating || 0))} {meal.rating?.toFixed(1) || "No ratings"}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function QuickFillModal({ onClose, weekPlan, setWeekPlan, meals, getWeekDates }) {
+            const [preview, setPreview] = useState([]);
+
+            useEffect(() => {
+                generatePreview();
+            }, []);
+
+            const generatePreview = () => {
+                const emptySlots = [];
+                getWeekDates().forEach(date => {
+                    ["breakfast", "lunch", "dinner"].forEach(type => {
+                        if (!weekPlan[`${date}-${type}`]) {
+                            emptySlots.push({ date, type, key: `${date}-${type}` });
+                        }
+                    });
+                });
+
+                if (emptySlots.length === 0) {
+                    setPreview([]);
+                    return;
+                }
+
+                // Sort meals by rating
+                const sortedMeals = [...meals].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+                const assigned = [];
+                const usedMeals = new Set();
+                const cuisineCounts = {};
+
+                emptySlots.forEach(slot => {
+                    for (let meal of sortedMeals) {
+                        const cuisineCount = cuisineCounts[meal.cuisine] || 0;
+                        if (!usedMeals.has(meal.id) && cuisineCount < 2) {
+                            assigned.push({ slot: slot.key, meal: meal.name, mealId: meal.id });
+                            usedMeals.add(meal.id);
+                            cuisineCounts[meal.cuisine] = cuisineCount + 1;
+                            break;
+                        }
+                    }
+                });
+
+                setPreview(assigned);
+            };
+
+            const handleShuffle = () => {
+                generatePreview();
+            };
+
+            const handleFillItUp = () => {
+                const newPlan = { ...weekPlan };
+                preview.forEach(item => {
+                    newPlan[item.slot] = item.mealId;
+                });
+                setWeekPlan(newPlan);
+                onClose();
+            };
+
+            return (
+                <div className="modal active" onClick={(e) => e.target === e.currentTarget && onClose()}>
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <div>Auto-fill empty slots with top-rated meals?</div>
+                            <button className="modal-close" onClick={onClose}>✕</button>
+                        </div>
+                        <div style={{ padding: "20px" }}>
+                            {preview.length === 0 ? (
+                                <div className="empty-state" style={{ padding: "40px 20px" }}>
+                                    <div className="empty-state-icon">✓</div>
+                                    <div className="empty-state-text">All slots are already filled!</div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div style={{ marginBottom: "16px" }}>
+                                        {preview.map((item, idx) => (
+                                            <div key={idx} className="quick-fill-preview">
+                                                <div>{item.meal}</div>
+                                                <div style={{ fontSize: "12px", color: "var(--text-light)" }}>{item.slot}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div style={{ display: "flex", gap: "12px" }}>
+                                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleFillItUp}>
+                                            Fill It Up
+                                        </button>
+                                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleShuffle}>
+                                            🔀 Shuffle
+                                        </button>
+                                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function VotingModal({ onClose, votingStep, setVotingStep, selectedCandidates, setSelectedCandidates, familyVotes, setFamilyVotes, voteCandidates, setVoteCandidates, meals, familyMembers, weekPlan, setWeekPlan, getWeekDates, setCurrentView }) {
+            const [searchQuery, setSearchQuery] = useState("");
+
+            const handleSelectCandidate = (mealId) => {
+                if (selectedCandidates.includes(mealId)) {
+                    setSelectedCandidates(selectedCandidates.filter(id => id !== mealId));
+                } else if (selectedCandidates.length < 8) {
+                    setSelectedCandidates([...selectedCandidates, mealId]);
+                }
+            };
+
+            const handleGoToSend = () => {
+                setVoteCandidates(selectedCandidates.map(id => meals.find(m => m.id === id)).filter(m => m));
+                setVotingStep("send");
+            };
+
+            const handleGoToTally = () => {
+                setVotingStep("tally");
+                familyMembers.forEach(member => {
+                    if (!familyVotes[member.id]) {
+                        setFamilyVotes(prev => ({ ...prev, [member.id]: [] }));
+                    }
+                });
+            };
+
+            const handleVoteMeal = (memberId, mealId) => {
+                const memberVotes = familyVotes[memberId] || [];
+                if (memberVotes.includes(mealId)) {
+                    setFamilyVotes(prev => ({ ...prev, [memberId]: memberVotes.filter(id => id !== mealId) }));
+                } else if (memberVotes.length < 3) {
+                    setFamilyVotes(prev => ({ ...prev, [memberId]: [...memberVotes, mealId] }));
+                }
+            };
+
+            const getVoteTally = () => {
+                const tally = {};
+                Object.values(familyVotes).forEach(votes => {
+                    votes.forEach((mealId, idx) => {
+                        const points = 3 - idx; // 1st choice = 3 pts, 2nd = 2 pts, 3rd = 1 pt
+                        tally[mealId] = (tally[mealId] || 0) + points;
+                    });
+                });
+                return Object.entries(tally)
+                    .map(([mealId, points]) => ({ mealId, points, meal: voteCandidates.find(m => m.id === mealId) }))
+                    .filter(t => t.meal)
+                    .sort((a, b) => b.points - a.points);
+            };
+
+            const handlePlanWinners = () => {
+                const tally = getVoteTally().slice(0, 3);
+                const emptySlots = [];
+                getWeekDates().forEach(date => {
+                    ["breakfast", "lunch", "dinner"].forEach(type => {
+                        if (!weekPlan[`${date}-${type}`]) {
+                            emptySlots.push(`${date}-${type}`);
+                        }
+                    });
+                });
+
+                const newPlan = { ...weekPlan };
+                tally.forEach((item, idx) => {
+                    if (idx < emptySlots.length) {
+                        newPlan[emptySlots[idx]] = item.mealId;
+                    }
+                });
+                setWeekPlan(newPlan);
+                onClose();
+                setCurrentView("planner");
+            };
+
+            const filteredMeals = searchQuery ? meals.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 10) : meals.slice(0, 8);
+            const tally = getVoteTally();
+            const maxVotes = tally.length > 0 ? tally[0].points : 1;
+
+            return (
+                <div className="modal active" onClick={(e) => e.target === e.currentTarget && onClose()}>
+                    <div className="modal-content" style={{ maxHeight: "85vh", overflowY: "auto" }}>
+                        <div className="modal-header">
+                            <div>
+                                {votingStep === "candidates" && "Pick Candidates (4-8)"}
+                                {votingStep === "send" && "Send Poll"}
+                                {votingStep === "tally" && "Tally Votes"}
+                            </div>
+                            <button className="modal-close" onClick={onClose}>✕</button>
+                        </div>
+
+                        <div style={{ padding: "20px" }}>
+                            {votingStep === "candidates" && (
+                                <>
+                                    <input
+                                        type="text"
+                                        className="search-input"
+                                        placeholder="Search meals..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        style={{ marginBottom: "12px" }}
+                                    />
+                                    <div style={{ fontSize: "13px", color: "var(--text-light)", marginBottom: "12px" }}>
+                                        Selected: {selectedCandidates.length}/8
+                                    </div>
+                                    {filteredMeals.map(meal => (
+                                        <div
+                                            key={meal.id}
+                                            className={`vote-candidate ${selectedCandidates.includes(meal.id) ? "selected" : ""}`}
+                                            onClick={() => handleSelectCandidate(meal.id)}
+                                        >
+                                            <input type="checkbox" checked={selectedCandidates.includes(meal.id)} readOnly style={{ marginRight: "8px" }} />
+                                            <span>{meal.name}</span>
+                                        </div>
+                                    ))}
+                                    <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
+                                        <button className="btn btn-primary" style={{ flex: 1 }} disabled={selectedCandidates.length < 4} onClick={handleGoToSend}>
+                                            Next
+                                        </button>
+                                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
+                                    </div>
+                                </>
+                            )}
+
+                            {votingStep === "send" && (
+                                <>
+                                    <div style={{ fontSize: "13px", marginBottom: "16px", padding: "12px", background: "var(--cream)", borderRadius: "8px", fontFamily: "monospace", whiteSpace: "pre-wrap" }}>
+                                        {'🍽️ Schwartz Family Meal Vote!\nReply with your top 3 numbers:\n' + voteCandidates.map((m, i) => `${i + 1}. ${m.name}`).join('\n') + '\n\nVote now! 🗳️'}
+                                    </div>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                        <button
+                                            className="btn btn-primary"
+                                            onClick={() => {
+                                                const text = `🍽️ Schwartz Family Meal Vote!\nReply with your top 3 numbers:\n${voteCandidates.map((m, i) => `${i + 1}. ${m.name}`).join('\n')}\n\nVote now! 🗳️`;
+                                                if (navigator.share) {
+                                                    navigator.share({ text });
+                                                } else {
+                                                    navigator.clipboard.writeText(text);
+                                                    alert("Copied to clipboard!");
+                                                }
+                                            }}
+                                        >
+                                            Share
+                                        </button>
+                                        <button
+                                            className="btn btn-secondary"
+                                            onClick={() => {
+                                                const text = `🍽️ Schwartz Family Meal Vote!\nReply with your top 3 numbers:\n${voteCandidates.map((m, i) => `${i + 1}. ${m.name}`).join('\n')}\n\nVote now! 🗳️`;
+                                                navigator.clipboard.writeText(text);
+                                                alert("Copied to clipboard!");
+                                            }}
+                                        >
+                                            Copy
+                                        </button>
+                                        <button className="btn btn-secondary" onClick={handleGoToTally}>Next: Tally Votes</button>
+                                    </div>
+                                </>
+                            )}
+
+                            {votingStep === "tally" && (
+                                <>
+                                    {familyMembers.map(member => (
+                                        <div key={member.id} style={{ marginBottom: "20px" }}>
+                                            <div style={{ fontSize: "13px", fontWeight: "700", marginBottom: "8px" }}>{member.name}</div>
+                                            {voteCandidates.map(meal => (
+                                                <div
+                                                    key={meal.id}
+                                                    className="vote-tally-item"
+                                                    onClick={() => handleVoteMeal(member.id, meal.id)}
+                                                    style={{ cursor: "pointer", opacity: (familyVotes[member.id] || []).includes(meal.id) ? 1 : 0.6 }}
+                                                >
+                                                    <input type="checkbox" checked={(familyVotes[member.id] || []).includes(meal.id)} readOnly />
+                                                    <span style={{ flex: 1 }}>{meal.name}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+
+                                    {tally.length > 0 && (
+                                        <div style={{ marginTop: "20px", padding: "16px", background: "var(--cream)", borderRadius: "8px" }}>
+                                            <div style={{ fontSize: "13px", fontWeight: "700", marginBottom: "12px" }}>Results</div>
+                                            {tally.map((item, idx) => (
+                                                <div key={idx} style={{ marginBottom: "12px" }}>
+                                                    <div style={{ fontSize: "12px", marginBottom: "4px" }}>
+                                                        {idx + 1}. {item.meal.name} ({item.points} pts)
+                                                    </div>
+                                                    <div className="vote-tally-bar" style={{ width: `${(item.points / maxVotes) * 100}%` }} />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
+                                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={handlePlanWinners}>
+                                            Plan Winners
+                                        </button>
+                                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>Done</button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function AddMealModal({ onClose, onSave, initialName }) {
+            const [formData, setFormData] = useState({
+                name: initialName || "",
+                cuisine: "American",
+                prepTime: 30,
+                prepType: "fresh",
+                ingredients: "",
+                notes: ""
+            });
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setFormData({
+                    ...formData,
+                    [name]: name === "prepTime" ? parseInt(value) : value
+                });
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (formData.name.trim()) {
+                    onSave({
+                        ...formData,
+                        ingredients: formData.ingredients.split(",").map(i => i.trim()).filter(Boolean)
+                    });
+                }
+            };
+
+            return (
+                <div className="modal active" onClick={(e) => e.target === e.currentTarget && onClose()}>
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <div>Add New Meal</div>
+                            <button className="modal-close" onClick={onClose}>✕</button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} style={{ padding: "0 20px 20px" }}>
+                            <div className="form-group">
+                                <label>Meal Name</label>
+                                <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="e.g., Grilled Salmon" required />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Cuisine</label>
+                                <select name="cuisine" value={formData.cuisine} onChange={handleChange}>
+                                    {["American", "Mexican", "Asian", "Mediterranean", "Indian"].map(c => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Prep Time (minutes)</label>
+                                <input type="number" name="prepTime" value={formData.prepTime} onChange={handleChange} min="5" max="180" />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Meal Type</label>
+                                <select name="prepType" value={formData.prepType} onChange={handleChange}>
+                                    <option value="fresh">🔥 Fresh (quick-cook)</option>
+                                    <option value="prep">🥘 Prep (slow-cooked/advance)</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Ingredients (comma-separated with quantities)</label>
+                                <textarea name="ingredients" value={formData.ingredients} onChange={handleChange} placeholder="e.g., 2 lbs salmon fillet, 1 lemon, 3 cloves garlic" />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Notes</label>
+                                <textarea name="notes" value={formData.notes} onChange={handleChange} placeholder="e.g., Serve with roasted vegetables" />
+                            </div>
+
+                            <button type="submit" className="btn btn-primary" style={{ width: "100%" }}>Add Meal</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        function MealPickerModal({ meals, onSelectMeal, onClose, slot, isFavorite }) {
+            const favorites = meals.filter(m => isFavorite(m.id));
+            const others = meals.filter(m => !isFavorite(m.id));
+
+            return (
+                <div className="modal active" onClick={(e) => e.target === e.currentTarget && onClose()}>
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <div>Choose a Meal</div>
+                            <button className="modal-close" onClick={onClose}>✕</button>
+                        </div>
+
+                        <div style={{ padding: "0 20px 20px" }}>
+                            {favorites.length > 0 && (
+                                <>
+                                    <h4 style={{ fontSize: "14px", fontWeight: "700", margin: "16px 0 12px" }}>Favorites</h4>
+                                    {favorites.map(meal => (
+                                        <div key={meal.id} className="meal-card" onClick={() => onSelectMeal(meal.id)} style={{ cursor: "pointer" }}>
+                                            <div className="meal-card-icon">{MEAL_ICONS[meal.cuisine]}</div>
+                                            <div className="meal-card-info">
+                                                <div className="meal-card-name">{meal.name}</div>
+                                                <div className="meal-card-meta">
+                                                    <span className="cuisine-badge">{meal.cuisine}</span>
+                                                    <span>{meal.prepTime}m</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+
+                            {others.length > 0 && (
+                                <>
+                                    <h4 style={{ fontSize: "14px", fontWeight: "700", margin: "16px 0 12px" }}>All Meals</h4>
+                                    {others.map(meal => (
+                                        <div key={meal.id} className="meal-card" onClick={() => onSelectMeal(meal.id)} style={{ cursor: "pointer" }}>
+                                            <div className="meal-card-icon">{MEAL_ICONS[meal.cuisine]}</div>
+                                            <div className="meal-card-info">
+                                                <div className="meal-card-name">{meal.name}</div>
+                                                <div className="meal-card-meta">
+                                                    <span className="cuisine-badge">{meal.cuisine}</span>
+                                                    <span>{meal.prepTime}m</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById("root"));
+        root.render(<App />);
+    </script>
+</body>
+</html>
