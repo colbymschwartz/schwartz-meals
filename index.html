@@ -1736,7 +1736,14 @@
                                         </div>
 
                                         <div className="card">
-                                            <div style={{ fontSize: "16px", fontWeight: "700", marginBottom: "12px" }}>Meal Plan Shopping List</div>
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                                                <div style={{ fontSize: "16px", fontWeight: "700" }}>Meal Plan Shopping List</div>
+                                                {Object.keys(shoppingList).length > 0 && (
+                                                    <button onClick={() => { if (confirm("Clear the entire shopping list?")) { setShoppingList({}); setShoppingChecked({}); storage.saveShoppingChecked({}); }}} style={{ padding: "6px 14px", borderRadius: "8px", border: "none", background: "#e74c3c", color: "white", fontSize: "13px", fontWeight: "600", cursor: "pointer" }}>
+                                                        Clear List
+                                                    </button>
+                                                )}
+                                            </div>
                                             <select style={{ width: "100%", padding: "10px", marginBottom: "16px", borderRadius: "8px", border: "1px solid var(--border-light)", fontSize: "14px" }}>
                                                 {STORES.map(store => (
                                                     <option key={store} value={store}>{store}</option>
