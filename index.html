@@ -760,6 +760,7 @@
             "American": "🍔",
             "Mexican": "🌮",
             "Asian": "🍜",
+            "Italian": "🍝",
             "Mediterranean": "🐟",
             "Indian": "🍛"
         };
@@ -768,6 +769,7 @@
             "American": "🥩",
             "Mexican": "🌯",
             "Asian": "🥢",
+            "Italian": "🍝",
             "Mediterranean": "🫒",
             "Indian": "🍛"
         };
@@ -1367,6 +1369,7 @@
             const [quickFillPreview, setQuickFillPreview] = useState([]);
             // Feature: Recipe Import
             const [showImportModal, setShowImportModal] = useState(false);
+            const [recipeDifficultyFilter, setRecipeDifficultyFilter] = useState("all");
             // Feature: Shopping list checked sync
             const [shoppingChecked, setShoppingChecked] = useState(() => storage.getShoppingChecked());
             // Feature: Firebase sync status
@@ -1414,9 +1417,32 @@
                         console.log("[Firebase] Ready, setting up listeners...");
 
                         // Seed if this is the first device
-                        await firebaseAdapter.seedIfEmpty("meals", storage.getMeals());
                         await firebaseAdapter.seedIfEmpty("weekPlan", storage.getWeekPlan());
                         await firebaseAdapter.seedIfEmpty("familySettings", storage.getFamilySettings());
+
+                        // Merge new seed recipes into Firebase
+                        if (firebaseReady && db) {
+                            try {
+                                const snap = await db.ref("meals").once("value");
+                                const fbMeals = snap.val();
+                                if (fbMeals && Array.isArray(fbMeals)) {
+                                    const fbIds = new Set(fbMeals.map(m => m.id));
+                                    const newSeeds = SEED_MEALS.filter(s => !fbIds.has(s.id));
+                                    if (newSeeds.length > 0) {
+                                        const merged = [...fbMeals, ...newSeeds];
+                                        await db.ref("meals").set(merged);
+                                        setMeals(merged);
+                                        localStorage.setItem("meals", JSON.stringify(merged));
+                                        console.log("[Firebase] Merged " + newSeeds.length + " new seed recipes");
+                                    }
+                                } else {
+                                    // No meals in Firebase yet, seed all
+                                    const allMeals = storage.getMeals();
+                                    await db.ref("meals").set(allMeals);
+                                    console.log("[Firebase] Seeded all meals");
+                                }
+                            } catch(e) { console.warn("[Firebase] Meal merge error:", e.message); }
+                        }
 
                         // Listen for changes from other devices
                         firebaseAdapter.listen("meals", (data) => {
@@ -1772,21 +1798,45 @@
                                                 📸 Import Recipe (Photo or Text)
                                             </button>
                                         </div>
+
+                                        {/* Difficulty Filter */}
+                                        <div style={{ padding: "0 12px", marginBottom: "12px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                                            {[{label: "All", value: "all"}, {label: "⚡ Easy", value: "easy"}, {label: "👨‍🍳 Normal", value: "normal"}].map(f => (
+                                                <button key={f.value}
+                                                    onClick={() => setRecipeDifficultyFilter(f.value)}
+                                                    style={{
+                                                        padding: "8px 16px", borderRadius: "20px", border: "none", fontSize: "13px", fontWeight: "600", cursor: "pointer",
+                                                        background: recipeDifficultyFilter === f.value ? "var(--primary)" : "var(--bg-warm)",
+                                                        color: recipeDifficultyFilter === f.value ? "white" : "var(--text-dark)"
+                                                    }}>
+                                                    {f.label}
+                                                </button>
+                                            ))}
+                                            <span style={{ fontSize: "12px", color: "var(--text-light)", alignSelf: "center", marginLeft: "auto" }}>
+                                                {meals.filter(m => recipeDifficultyFilter === "all" || m.difficulty === recipeDifficultyFilter).length} recipes
+                                            </span>
+                                        </div>
+
                                         <div style={{ padding: "0 12px" }}>
-                                            {["American", "Mexican", "Asian", "Mediterranean", "Indian"].map(cuisine => (
+                                            {["American", "Mexican", "Asian", "Italian", "Mediterranean", "Indian"].map(cuisine => {
+                                                const filtered = meals.filter(m => m.cuisine === cuisine && (recipeDifficultyFilter === "all" || m.difficulty === recipeDifficultyFilter || (!m.difficulty && recipeDifficultyFilter === "all")));
+                                                if (filtered.length === 0) return null;
+                                                return (
                                                 <div key={cuisine}>
                                                     <h3 style={{ fontSize: "14px", fontWeight: "700", margin: "16px 0 12px", color: "var(--text-dark)" }}>
-                                                        {CUISINE_ICONS[cuisine]} {cuisine}
+                                                        {CUISINE_ICONS[cuisine] || "🍽️"} {cuisine} <span style={{ fontWeight: "400", color: "var(--text-light)", fontSize: "12px" }}>({filtered.length})</span>
                                                     </h3>
-                                                    {meals.filter(m => m.cuisine === cuisine).slice(0, 5).map(meal => (
+                                                    {filtered.map(meal => (
                                                         <div key={meal.id} className="search-result-item" onClick={() => setSelectedMeal(meal)}>
-                                                            <div className="search-result-icon">{MEAL_ICONS[meal.cuisine]}</div>
+                                                            <div className="search-result-icon">{MEAL_ICONS[meal.cuisine] || "🍽️"}</div>
                                                             <div className="search-result-text">
                                                                 <div className="search-result-name">
                                                                     {meal.name}
+                                                                    {meal.difficulty === "easy" && <span style={{ fontSize: "10px", background: "#4CAF50", color: "white", padding: "2px 6px", borderRadius: "8px", marginLeft: "6px" }}>Easy</span>}
+                                                                    {meal.difficulty === "normal" && <span style={{ fontSize: "10px", background: "#2196F3", color: "white", padding: "2px 6px", borderRadius: "8px", marginLeft: "6px" }}>Normal</span>}
                                                                     {meal.prepType && (
                                                                         <span className={`prep-badge ${meal.prepType}`}>
-                                                                            {meal.prepType === "prep" ? "🥘 Prep" : "🔥 Fresh"}
+                                                                            {meal.prepType === "prep" ? "🥘 Prep" : meal.prepType === "slow" ? "🍲 Slow" : "🔥 Fresh"}
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -1795,7 +1845,8 @@
                                                         </div>
                                                     ))}
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 </div>
